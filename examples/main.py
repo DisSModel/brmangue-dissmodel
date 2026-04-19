@@ -1,4 +1,4 @@
-from brmangue_dissmodel.executor.brmangue_executor import BrmangueExecutor
+from brmangue.executor.brmangue_executor import BrmangueExecutor
 
 import matplotlib
 matplotlib.use('tkagg')

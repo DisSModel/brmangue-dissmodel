@@ -22,7 +22,7 @@ Output artifacts
 
 Usage
 -----
-    python brmangue_dissmodel/executor/validation_executor.py run \\
+    python brmangue/executor/validation_executor.py run \\
       --input  examples/data/input/elevacao_pol.zip \\
       --output examples/data/output/validation \\
       --param  golden_dir=tests/fixtures/golden \\
@@ -52,9 +52,9 @@ from dissmodel.io                 import load_dataset
 from dissmodel.io._utils          import write_bytes, write_text
 from dissmodel.executor.config    import settings
 
-from brmangue_dissmodel.models.flood_model    import FloodModel    as RasterFlood
-from brmangue_dissmodel.models.mangrove_model import MangroveModel as RasterMangue
-from brmangue_dissmodel.common.constants      import CRS, CELL_SIZE
+from brmangue.models.flood_model    import FloodModel    as RasterFlood
+from brmangue.models.mangrove_model import MangroveModel as RasterMangue
+from brmangue.common.constants      import CRS, CELL_SIZE
 
 BANDS: dict[str, str] = {
     "uso":  "exact",

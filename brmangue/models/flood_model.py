@@ -9,7 +9,7 @@ import numpy as np
 from dissmodel.geo.raster.backend import RasterBackend
 from dissmodel.geo.raster.sync_model import SyncRasterModel
 
-from brmangue_dissmodel.common.constants import (
+from brmangue.common.constants import (
     USOS_INUNDADOS,
     REGRAS_INUNDACAO,
     MAR,

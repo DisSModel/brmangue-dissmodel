@@ -17,7 +17,7 @@ import geopandas as gpd
 from dissmodel.io.convert import vector_to_raster_backend
 from dissmodel.io.raster  import save_geotiff
 
-from brmangue_dissmodel.common.constants import TIFF_BANDS, CRS
+from brmangue.common.constants import TIFF_BANDS, CRS
 
 SHAPEFILE_DEFAULTS: dict[str, int | float] = {
     "uso":  5,

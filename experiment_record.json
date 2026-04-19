@@ -1,6 +1,6 @@
 {
-  "experiment_id": "aa48d03b5df348a1be8ebe55334ff358",
-  "created_at": "2026-04-19T23:07:58.544419",
+  "experiment_id": "8c5dfaf436b6480b9d81d4516e681a5e",
+  "created_at": "2026-04-19T23:16:14.643190",
   "model_name": "local",
   "model_commit": "local-cli",
   "code_version": "dev",
@@ -42,24 +42,24 @@
     ],
     "interactive": false
   },
-  "output_path": "outputs/experiments/aa48d03b5df348a1be8ebe55334ff358/output.tif",
+  "output_path": "outputs/experiments/8c5dfaf436b6480b9d81d4516e681a5e/output.tif",
   "artifacts": {
     "output": "3da8fce234ed8e2ccbd3bbfa2fffdf5b14dfc8dfe7ae634964156b37db118e13",
-    "profiling": "56bfd2d299270fe671fa6899931108578b3ceadc43d7daf7cecd28be5a089620"
+    "profiling": "b55b33205e391abb8956c4d77383214854a9d41fe319b3812c80b7285054aaea"
   },
   "metrics": {
     "time_validate_sec": 0.0,
-    "time_load_sec": 0.029,
-    "time_run_sec": 0.47,
-    "time_save_sec": 0.003,
-    "time_total_sec": 0.502
+    "time_load_sec": 0.03,
+    "time_run_sec": 0.77,
+    "time_save_sec": 0.013,
+    "time_total_sec": 0.812
   },
   "status": "completed",
   "logs": [
     "Loaded GeoTIFF: shape=(60, 60) start=1 crs=EPSG:31984",
     "Running steps 1 → 20...",
     "Simulation complete",
-    "Saved to outputs/experiments/aa48d03b5df348a1be8ebe55334ff358/output.tif",
-    "Saved profiling artifact → outputs/experiments/aa48d03b5df348a1be8ebe55334ff358/profiling_aa48d03b.md"
+    "Saved to outputs/experiments/8c5dfaf436b6480b9d81d4516e681a5e/output.tif",
+    "Saved profiling artifact → outputs/experiments/8c5dfaf436b6480b9d81d4516e681a5e/profiling_8c5dfaf4.md"
   ]
 }
