@@ -1,0 +1,190 @@
+{
+  "experiment_id": "632b46a6c7ed4b519b22dfd30cbe250b",
+  "created_at": "2026-04-19T22:53:14.011407",
+  "model_name": "local",
+  "model_commit": "local-cli",
+  "code_version": "dev",
+  "resolved_spec": {},
+  "source": {
+    "type": "local",
+    "uri": "examples/data/input/elevacao_pol.zip",
+    "collection": "",
+    "version": "",
+    "checksum": "73b94a20995cee922e06b6dfadcc20bcca62ae4336200193f9ed4f2d842b688e"
+  },
+  "input_format": "auto",
+  "column_map": {},
+  "band_map": {},
+  "parameters": {
+    "golden_dir": "tests/fixtures/golden",
+    "end_time": 20,
+    "taxa_elevacao": 0.05,
+    "altura_mare": 6.0,
+    "checkpoints": [
+      1,
+      5,
+      10,
+      15,
+      20
+    ]
+  },
+  "output_path": "examples/data/output/validation_632b46a6",
+  "artifacts": {
+    "plot": "c139dd3b2ba746e9b6973349ee7da8c99bb66369a91bc4b99730bc7ab24dbc0f",
+    "report": "1c19d94fa1e1408c46def79005859f53ef8bd8ad1f56975deaccddffc71d2328",
+    "profiling": "839c54675cc3e6eb283e8194c52e3f71e6d9b4cfbcfa33b3df4cadec45db203e"
+  },
+  "metrics": {
+    "1": {
+      "uso": {
+        "match_pct": 98.85337452471484,
+        "mae": 0.06802519011406843,
+        "rmse": 0.6370511168464311,
+        "max_err": 6.0,
+        "n_cells": 50496
+      },
+      "solo": {
+        "match_pct": 98.58602661596959,
+        "mae": 0.08214512040557669,
+        "rmse": 0.692390286798001,
+        "max_err": 6.0,
+        "n_cells": 50496
+      },
+      "alt": {
+        "match_pct": 90.64876425855513,
+        "mae": 0.06617645417773158,
+        "rmse": 0.23938825589652218,
+        "max_err": 1.4550793650793645,
+        "n_cells": 50496
+      }
+    },
+    "5": {
+      "uso": {
+        "match_pct": 99.50689163498099,
+        "mae": 0.029170627376425857,
+        "rmse": 0.4168646551153151,
+        "max_err": 6.0,
+        "n_cells": 50496
+      },
+      "solo": {
+        "match_pct": 99.74255386565272,
+        "mae": 0.014060519645120406,
+        "rmse": 0.2782658365522831,
+        "max_err": 6.0,
+        "n_cells": 50496
+      },
+      "alt": {
+        "match_pct": 90.64876425855513,
+        "mae": 0.05285262654782031,
+        "rmse": 0.19113783646114582,
+        "max_err": 1.1958333333333568,
+        "n_cells": 50496
+      }
+    },
+    "10": {
+      "uso": {
+        "match_pct": 99.71878960709759,
+        "mae": 0.016694391634980987,
+        "rmse": 0.31564482253380216,
+        "max_err": 6.0,
+        "n_cells": 50496
+      },
+      "solo": {
+        "match_pct": 99.81780735107732,
+        "mae": 0.010297845373891001,
+        "rmse": 0.24211258628166138,
+        "max_err": 6.0,
+        "n_cells": 50496
+      },
+      "alt": {
+        "match_pct": 90.64876425855513,
+        "mae": 0.03619784201043087,
+        "rmse": 0.1309921227363236,
+        "max_err": 0.8623611111111567,
+        "n_cells": 50496
+      }
+    },
+    "15": {
+      "uso": {
+        "match_pct": 99.82770912547528,
+        "mae": 0.010159220532319392,
+        "rmse": 0.24580607676871183,
+        "max_err": 6.0,
+        "n_cells": 50496
+      },
+      "solo": {
+        "match_pct": 99.84553231939164,
+        "mae": 0.008911596958174905,
+        "rmse": 0.22734832824855883,
+        "max_err": 6.0,
+        "n_cells": 50496
+      },
+      "alt": {
+        "match_pct": 90.64876425855513,
+        "mae": 0.01954573095212914,
+        "rmse": 0.07099408415882091,
+        "max_err": 0.49845238095237,
+        "n_cells": 50496
+      }
+    },
+    "20": {
+      "uso": {
+        "match_pct": 99.90494296577947,
+        "mae": 0.005644011406844106,
+        "rmse": 0.18353701670753272,
+        "max_err": 6.0,
+        "n_cells": 50496
+      },
+      "solo": {
+        "match_pct": 99.84553231939164,
+        "mae": 0.008911596958174905,
+        "rmse": 0.22734832824855883,
+        "max_err": 6.0,
+        "n_cells": 50496
+      },
+      "alt": {
+        "match_pct": 90.67054816223067,
+        "mae": 0.0032916814407422854,
+        "rmse": 0.012953650643055167,
+        "max_err": 0.2140476190476608,
+        "n_cells": 50496
+      }
+    },
+    "time_validate_sec": 0.0,
+    "time_load_sec": 0.593,
+    "time_run_sec": 1.192,
+    "time_save_sec": 0.001,
+    "time_total_sec": 1.786
+  },
+  "status": "completed",
+  "logs": [
+    "Loaded shapefile: 50,496 cells  crs=PROJCS[\"Polyconic\",GEOGCS[\"SIRGAS2000\",DATUM[\"SIRGAS2000\",SPHEROID[\"UserDefined\",6378137,298.257222]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]]],PROJECTION[\"Polyconic\"],PARAMETER[\"latitude_of_origin\",0],PARAMETER[\"central_meridian\",-54],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"meter\",1],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH]]",
+    "  Loaded golden step 01: 50,496 rows",
+    "  Loaded golden step 05: 50,496 rows",
+    "  Loaded golden step 10: 50,496 rows",
+    "  Loaded golden step 15: 50,496 rows",
+    "  Loaded golden step 20: 50,496 rows",
+    "Running Raster Model (1 → 20)...",
+    "Raster done: 21.6 ms/step",
+    "Calculating metrics...",
+    "  step=01  uso: match=98.9%  MAE=0.06803  max_err=6.00000",
+    "  step=01  solo: match=98.6%  MAE=0.08215  max_err=6.00000",
+    "  step=01  alt: match=90.6%  MAE=0.06618  max_err=1.45508",
+    "  step=05  uso: match=99.5%  MAE=0.02917  max_err=6.00000",
+    "  step=05  solo: match=99.7%  MAE=0.01406  max_err=6.00000",
+    "  step=05  alt: match=90.6%  MAE=0.05285  max_err=1.19583",
+    "  step=10  uso: match=99.7%  MAE=0.01669  max_err=6.00000",
+    "  step=10  solo: match=99.8%  MAE=0.01030  max_err=6.00000",
+    "  step=10  alt: match=90.6%  MAE=0.03620  max_err=0.86236",
+    "  step=15  uso: match=99.8%  MAE=0.01016  max_err=6.00000",
+    "  step=15  solo: match=99.8%  MAE=0.00891  max_err=6.00000",
+    "  step=15  alt: match=90.6%  MAE=0.01955  max_err=0.49845",
+    "  step=20  uso: match=99.9%  MAE=0.00564  max_err=6.00000",
+    "  step=20  solo: match=99.8%  MAE=0.00891  max_err=6.00000",
+    "  step=20  alt: match=90.7%  MAE=0.00329  max_err=0.21405",
+    "Generating scatter plots...",
+    "Saved scatter.png → examples/data/output/validation_632b46a6/scatter.png",
+    "Saved report.md   → examples/data/output/validation_632b46a6/report.md",
+    "Saved profiling artifact → examples/data/output/profiling_632b46a6.md"
+  ]
+}

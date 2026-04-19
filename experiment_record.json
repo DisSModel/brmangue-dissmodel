@@ -1,0 +1,65 @@
+{
+  "experiment_id": "8ed66293068a44aa9a4cd51904066919",
+  "created_at": "2026-04-19T22:43:25.300148",
+  "model_name": "local",
+  "model_commit": "local-cli",
+  "code_version": "dev",
+  "resolved_spec": {
+    "model": {
+      "parameters": {
+        "end_time": 20,
+        "taxa_elevacao": 0.5,
+        "altura_mare": 6.0,
+        "acrecao_ativa": false,
+        "resolution": 100.0,
+        "crs": "EPSG:31984",
+        "bands": [
+          "uso"
+        ],
+        "interactive": false
+      }
+    }
+  },
+  "source": {
+    "type": "local",
+    "uri": "examples/data/input/synthetic_grid_60x60_tiff.zip",
+    "collection": "",
+    "version": "",
+    "checksum": "282288b5c942a1e6d5677656fbf81c8ce10755f2db3e62b1d54a702eb0f0c696"
+  },
+  "input_format": "auto",
+  "column_map": {},
+  "band_map": {},
+  "parameters": {
+    "end_time": 20,
+    "taxa_elevacao": 0.5,
+    "altura_mare": 6.0,
+    "acrecao_ativa": false,
+    "resolution": 100.0,
+    "crs": "EPSG:31984",
+    "bands": [
+      "uso"
+    ],
+    "interactive": false
+  },
+  "output_path": "outputs/experiments/8ed66293068a44aa9a4cd51904066919/output.tif",
+  "artifacts": {
+    "output": "3da8fce234ed8e2ccbd3bbfa2fffdf5b14dfc8dfe7ae634964156b37db118e13",
+    "profiling": "1debbc31e4262dbd4897ca38624d5e60b4ad10b97e989a3ec5540283f6f87d13"
+  },
+  "metrics": {
+    "time_validate_sec": 0.0,
+    "time_load_sec": 0.026,
+    "time_run_sec": 0.465,
+    "time_save_sec": 0.003,
+    "time_total_sec": 0.494
+  },
+  "status": "completed",
+  "logs": [
+    "Loaded GeoTIFF: shape=(60, 60) start=1 crs=EPSG:31984",
+    "Running steps 1 → 20...",
+    "Simulation complete",
+    "Saved to outputs/experiments/8ed66293068a44aa9a4cd51904066919/output.tif",
+    "Saved profiling artifact → outputs/experiments/8ed66293068a44aa9a4cd51904066919/profiling_8ed66293.md"
+  ]
+}

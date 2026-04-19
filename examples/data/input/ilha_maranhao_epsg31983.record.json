@@ -1,0 +1,41 @@
+{
+  "experiment_id": "dba56dab6cf34a28ac1f25edb7df4b2f",
+  "created_at": "2026-04-08T12:01:15.683212",
+  "model_name": "local",
+  "model_commit": "local-cli",
+  "code_version": "dev",
+  "resolved_spec": {},
+  "source": {
+    "type": "local",
+    "uri": "examples/data/input/ilha_maranhao_epsg31983.tif",
+    "collection": "",
+    "version": "",
+    "checksum": "72ad4920c4c5a523c035bf71554fdcb52ee3243f966ac32c4fe9785b8c63116e"
+  },
+  "input_format": "auto",
+  "column_map": {},
+  "band_map": {},
+  "parameters": {
+    "end_time": 50,
+    "resolution": 100
+  },
+  "output_path": "examples/data/input/ilha_maranhao_epsg31983.tif",
+  "artifacts": {
+    "output": "3c15eda87ccb727ef402dca0e74327ccad83b3eed2fef3a36604221b7bb47ba1",
+    "profiling": "bd90ef62e13c744adeab401dcbb4b8e36ff308001aabb4a6aa880d3817de6918"
+  },
+  "metrics": {
+    "time_validate_sec": 0.0,
+    "time_run_sec": 2.716,
+    "time_save_sec": 0.02,
+    "time_total_sec": 2.736
+  },
+  "status": "completed",
+  "logs": [
+    "Loaded GeoTIFF: shape=(418, 405) start=1 crs=EPSG:31983",
+    "Running steps 1 → 50...",
+    "Simulation complete",
+    "Saved to examples/data/input/ilha_maranhao_epsg31983.tif",
+    "Saved profiling artifact → examples/data/input/profiling_dba56dab.md"
+  ]
+}
