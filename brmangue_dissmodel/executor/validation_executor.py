@@ -1,9 +1,9 @@
 """
-coastal_raster_validation_executor.py — Raster vs TerraME Validation
-=====================================================================
+validation_executor.py — Raster vs TerraME Validation
+=====================================================
 
-Simplified validation executor: runs only the Raster substrate and
-compares it against TerraME golden CSV files step by step.
+Simplified validation executor: runs the models and
+compares them against TerraME golden CSV files step by step.
 
 Input contract
 --------------
@@ -22,7 +22,7 @@ Output artifacts
 
 Usage
 -----
-    python brmangue_dissmodel/executor/coastal_raster_validation_executor.py run \\
+    python brmangue_dissmodel/executor/validation_executor.py run \\
       --input  examples/data/input/elevacao_pol.zip \\
       --output examples/data/output/validation \\
       --param  golden_dir=tests/fixtures/golden \\
@@ -65,15 +65,15 @@ BANDS: dict[str, str] = {
 DEFAULT_CHECKPOINTS = [1, 5, 10, 15, 20, 25, 30]
 
 
-class CoastalRasterValidationExecutor(ModelExecutor):
+class ValidationExecutor(ModelExecutor):
     """
-    Raster-only validation executor for BR-MANGUE coastal dynamics.
+    Validation executor for BR-MANGUE coastal dynamics.
 
     Loads the input shapefile, rasterises it, runs FloodModel +
     MangroveModel, and compares the result against TerraME golden CSVs.
     """
 
-    name = "coastal_raster_validation"
+    name = "validation"
 
     # ── public contract ───────────────────────────────────────────────────────
 
@@ -150,7 +150,7 @@ class CoastalRasterValidationExecutor(ModelExecutor):
         gdf_orig, golden_map = data
 
         # ── raster run ────────────────────────────────────────────────────────
-        record.add_log(f"Running Raster Model (1 → {end_time})...")
+        record.add_log(f"Running Model (1 → {end_time})...")
         backend, rows_idx, cols_idx = _build_raster(gdf_orig)
 
         env = Environment(start_time=1, end_time=end_time)
@@ -160,7 +160,7 @@ class CoastalRasterValidationExecutor(ModelExecutor):
         t0     = time.perf_counter()
         env.run()
         ras_ms = (time.perf_counter() - t0) * 1000 / end_time
-        record.add_log(f"Raster done: {ras_ms:.1f} ms/step")
+        record.add_log(f"Model done: {ras_ms:.1f} ms/step")
 
         # ── metrics per checkpoint ────────────────────────────────────────────
         record.add_log("Calculating metrics...")
@@ -215,7 +215,7 @@ class CoastalRasterValidationExecutor(ModelExecutor):
     def save(self, result: dict, record: ExperimentRecord) -> ExperimentRecord:
         base_uri = (
             record.output_path
-            or f"outputs/experiments/{record.experiment_id}/raster_validation"
+            or f"outputs/experiments/{record.experiment_id}/validation"
         )
 
         record.add_artifact(
@@ -392,4 +392,4 @@ def _build_markdown(
 
 
 if __name__ == "__main__":
-    run_cli(CoastalRasterValidationExecutor)
+    run_cli(ValidationExecutor)

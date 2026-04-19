@@ -36,9 +36,9 @@ SHAPEFILE_DEFAULTS: dict[str, int | float] = {
 CANONICAL_BANDS = {"uso", "alt", "solo"}
 
 
-class CoastalRasterExecutor(ModelExecutor):
+class BrmangueExecutor(ModelExecutor):
     """
-    Executor for the raster-based coastal dynamics simulation.
+    Executor for the BR-MANGUE dynamics simulation.
 
     Accepts GeoTIFF (resume) or vector (new simulation) as input.
     Couples FloodModel + MangroveModel over a shared RasterBackend.
@@ -52,7 +52,7 @@ class CoastalRasterExecutor(ModelExecutor):
     before any model sees the data.
     """
 
-    name = "coastal_raster"
+    name = "brmangue"
 
     # ── public contract ───────────────────────────────────────────────────────
 
@@ -285,4 +285,4 @@ def _detect_format(uri: str) -> str:
 
 
 if __name__ == "__main__":
-    run_cli(CoastalRasterExecutor)
+    run_cli(BrmangueExecutor)

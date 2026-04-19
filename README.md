@@ -4,14 +4,14 @@
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://python.org)
-[![DisSModel](https://img.shields.io/badge/DisSModel-%3E%3D0.4.0-orange.svg)](https://github.com/LambdaGeo/dissmodel)
+[![DisSModel](https://img.shields.io/badge/DisSModel-%3E%3D0.4.0-orange.svg)](https://github.com/LambdaGeo)
 [![LambdaGeo](https://img.shields.io/badge/LambdaGeo-Research-green.svg)](https://github.com/LambdaGeo)
 
 ---
 
 ## 📖 About
 
-**brmangue-dissmodel** (formerly coastal-dynamics) implements spatially explicit models of coastal ecosystem processes using the **[DisSModel](https://github.com/LambdaGeo/dissmodel)** framework. Two coupled processes are modelled:
+**brmangue-dissmodel** implements spatially explicit models of coastal ecosystem processes using the **[DisSModel](https://github.com/LambdaGeo/dissmodel)** framework. Two coupled processes are modelled:
 
 1. **Flood Dynamics** — sea-level rise propagation and terrain elevation adjustments.
 2. **Mangrove Migration** — ecosystem response to rising sea levels, soil transitions, and sediment accretion.
@@ -25,23 +25,33 @@ This version is focused entirely on the **Raster substrate** for high-performanc
 ### CLI local (development)
 
 ```bash
-# Raster simulation (NumPy-based, fast)
-python examples/main_raster.py run \
+# BR-MANGUE simulation (NumPy-based, fast)
+python examples/main.py run \
   --input  examples/data/input/synthetic_grid_60x60_tiff.zip \
-  --format tiff \
   --output examples/data/output/saida.tiff \
   --param  interactive=true \
   --param  end_time=20
 
 # Load calibrated parameters from TOML
-python examples/main_raster.py run \
+python examples/main.py run \
   --input  examples/data/input/synthetic_grid_60x60_tiff.zip \
-  --format tiff \
   --toml   examples/model.toml
 
 # Validate executor data contract without running
-python examples/main_raster.py validate \
+python examples/main.py validate \
   --input examples/data/input/synthetic_grid_60x60_tiff.zip
+
+# Prepare raster from vector
+python examples/prepare_raster.py data/input.shp --output data/input.tif
+
+# Run Validation against TerraME golden CSVs
+python brmangue_dissmodel/executor/validation_executor.py run \
+  --input  examples/data/input/elevacao_pol.zip \
+  --param  golden_dir=tests/fixtures/golden \
+  --param  end_time=20 \
+  --param  taxa_elevacao=0.05 \
+  --param  altura_mare=6.0 \
+  --param  checkpoints=[1,5,10,15,20]
 ```
 
 ### Platform API (production / reproducibility)
@@ -52,7 +62,7 @@ curl -X POST http://localhost:8000/submit_job \
   -H "X-API-Key: chave-sergio" \
   -H "Content-Type: application/json" \
   -d '{
-    "model_name":    "coastal_raster",
+    "model_name":    "brmangue",
     "input_dataset": "s3://dissmodel-inputs/mangue_grid.tif",
     "parameters":    {"end_time": 88, "taxa_elevacao": 0.011}
   }'
@@ -80,8 +90,8 @@ The project follows the DisSModel `ModelExecutor` pattern — each executor sepa
 
 | name | Substrate | Input → Output | Description |
 |------|-----------|----------------|-------------|
-| `coastal_raster` | RasterBackend / NumPy | Shapefile / GeoTIFF → GeoTIFF | Production raster simulation |
-| `coastal_raster_validation` | RasterBackend | Shapefile → MD + PNG | Validation against golden CSVs (TerraME) |
+| `brmangue` | RasterBackend / NumPy | Shapefile / GeoTIFF → GeoTIFF | Production simulation |
+| `validation` | RasterBackend | Shapefile → MD + PNG | Validation against golden CSVs (TerraME) |
 
 ---
 
@@ -104,15 +114,16 @@ brmangue-dissmodel/
 │   ├── __init__.py
 │   ├── executor/                         # ModelExecutor implementations
 │   │   ├── __init__.py                   # imports executors → auto-registration
-│   │   ├── coastal_raster_executor.py    # RasterBackend/NumPy substrate
-│   │   └── coastal_raster_validation_executor.py  # Validation against TerraME
+│   │   ├── brmangue_executor.py          # Production simulation
+│   │   └── validation_executor.py        # Validation against TerraME
 │   ├── models/                           # NumPy-based models
 │   │   ├── flood_model.py
 │   │   └── mangrove_model.py
 │   └── common/
 │       └── constants.py                  # TIFF_BANDS, CRS, USO_COLORS, ...
 ├── examples/
-│   ├── main_raster.py                    # CoastalRasterExecutor via CLI
+│   ├── main.py                           # BrmangueExecutor via CLI
+│   ├── prepare_raster.py                 # Vector to GeoTIFF converter
 │   ├── model.toml                        # Simulation parameters
 │   └── data/
 └── pyproject.toml
