@@ -4,13 +4,13 @@ from dissmodel.executor     import ExperimentRecord, ModelExecutor
 from dissmodel.executor.cli import run_cli
 from dissmodel.io           import load_dataset, save_dataset
 
-from brmangue_dissmodel.common.constants import (
+from brmangue.common.constants import (
     MAR, TIFF_BANDS, CRS,
     USO_COLORS, USO_LABELS,
     SOLO_COLORS, SOLO_LABELS,
 )
-from brmangue_dissmodel.models.flood_model    import FloodModel
-from brmangue_dissmodel.models.mangrove_model import MangroveModel
+from brmangue.models.flood_model    import FloodModel
+from brmangue.models.mangrove_model import MangroveModel
 
 # ── visualization config ──────────────────────────────────────────────────────
 

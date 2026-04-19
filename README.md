@@ -45,7 +45,7 @@ python examples/main.py validate \
 python examples/prepare_raster.py data/input.shp --output data/input.tif
 
 # Run Validation against TerraME golden CSVs
-python brmangue_dissmodel/executor/validation_executor.py run \
+python brmangue/executor/validation_executor.py run \
   --input  examples/data/input/elevacao_pol.zip \
   --param  golden_dir=tests/fixtures/golden \
   --param  end_time=20 \
@@ -110,7 +110,7 @@ pip install -e .
 
 ```
 brmangue-dissmodel/
-├── brmangue_dissmodel/
+├── brmangue/
 │   ├── __init__.py
 │   ├── executor/                         # ModelExecutor implementations
 │   │   ├── __init__.py                   # imports executors → auto-registration

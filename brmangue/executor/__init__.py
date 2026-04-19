@@ -1,10 +1,10 @@
-# brmangue_dissmodel/executor/__init__.py
+# brmangue/executor/__init__.py
 
 from .brmangue_executor import BrmangueExecutor
 from .validation_executor import ValidationExecutor
 
 # A variável mágica __all__ define exatamente o que é exportado
-# quando alguém faz `from brmangue_dissmodel.executor import *`
+# quando alguém faz `from brmangue.executor import *`
 __all__ = [
     "BrmangueExecutor",
     "ValidationExecutor",

@@ -24,4 +24,4 @@ Documentation = "https://lambdageo.github.io/coastal-dynamics"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["brmangue_dissmodel*"]
+include = ["brmangue*"]
