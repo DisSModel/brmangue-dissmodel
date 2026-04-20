@@ -8,6 +8,7 @@ from brmangue.common.constants import (
     MAR, TIFF_BANDS, CRS,
     USO_COLORS, USO_LABELS,
     SOLO_COLORS, SOLO_LABELS,
+    SOLO_LEITO_RIO, 
 )
 from brmangue.models.flood_model    import FloodModel
 from brmangue.models.mangrove_model import MangroveModel
@@ -29,7 +30,7 @@ BAND_CONFIG: dict[str, dict] = {
 SHAPEFILE_DEFAULTS: dict[str, int | float] = {
     "uso":  5,
     "alt":  0.0,
-    "solo": 1,
+    "solo": SOLO_LEITO_RIO,     
 }
 
 # Canonical band names this executor always expects after load()

@@ -61,12 +61,28 @@ USO_COLORS: dict[int, str] = {
 
 # ── tabela_solos ──────────────────────────────────────────────────────────────
 SOLO_CANAL_FLUVIAL  = 0
+SOLO_LEITO_RIO      = 1   # present in input data — no active rule (legacy class)
+SOLO_PODZOLICO      = 2   # present in input data — no active rule (legacy class)
 SOLO_MANGUE         = 3
-SOLO_MANGUE_MIGRADO = 9
 SOLO_OUTROS         = 4
+SOLO_MANGUE_MIGRADO = 9
+
+# All soil codes present in the input data. Values 1 and 2 are legacy classes
+# from the original Bezerra (2014) database that carry no transition rule in
+# the current model — they are treated as passive substrate (like SOLO_OUTROS).
+VALID_SOLO: set[int] = {
+    SOLO_CANAL_FLUVIAL,
+    SOLO_LEITO_RIO,
+    SOLO_PODZOLICO,
+    SOLO_MANGUE,
+    SOLO_OUTROS,
+    SOLO_MANGUE_MIGRADO,
+}
 
 SOLO_LABELS: dict[int, str] = {
     SOLO_CANAL_FLUVIAL:  "Canal Fluvial",
+    SOLO_LEITO_RIO:      "Leito de Rio",
+    SOLO_PODZOLICO:      "Podzólico",
     SOLO_MANGUE:         "Mangue",
     SOLO_MANGUE_MIGRADO: "Mangue Migrado",
     SOLO_OUTROS:         "Outros",
@@ -88,6 +104,8 @@ TIFF_BANDS: list[tuple[str, str, float]] = [
 # cores da tabela_solos (para RasterMap)
 SOLO_COLORS: dict[int, str] = {
     SOLO_CANAL_FLUVIAL:  "#0000ff",   # azul — canal de drenagem
+    SOLO_LEITO_RIO:      "#6699cc",   # azul claro
+    SOLO_PODZOLICO:      "#aaaaaa",   # cinza claro
     SOLO_MANGUE:         "#006400",   # verde escuro
     SOLO_MANGUE_MIGRADO: "#228b22",   # verde floresta
     SOLO_OUTROS:         "#888888",   # cinza

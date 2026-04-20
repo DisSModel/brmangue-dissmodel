@@ -1,6 +1,6 @@
 # examples/prepare_raster.py
 """
-Converts a vector shapefile to a GeoTIFF ready for CoastalRasterExecutor.
+Converts a vector shapefile to a GeoTIFF ready for BrmangueExecutor.
 Run once as a preprocessing step — save the output and reuse it.
 
 Usage:
@@ -68,7 +68,7 @@ def prepare(shp: str, resolution: float, crs: str, output: str) -> None:
 
 
 if __name__ == "__main__":
-    p = argparse.ArgumentParser(description="Convert shapefile to GeoTIFF for CoastalRasterExecutor")
+    p = argparse.ArgumentParser(description="Convert shapefile to GeoTIFF for BrmangueExecutor")
     p.add_argument("shp",                            help="Input shapefile or zip")
     p.add_argument("--resolution", type=float, default=100.0, help="Pixel size in metres (default: 100)")
     p.add_argument("--crs",        default=CRS,               help=f"Target CRS (default: {CRS})")

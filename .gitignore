@@ -28,7 +28,7 @@ venv/
 ENV/
 
 # Project specific
-outputs/
+
 *.tif
 *.tiff
 *.gpkg
