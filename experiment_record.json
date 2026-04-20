@@ -1,6 +1,6 @@
 {
-  "experiment_id": "8c5dfaf436b6480b9d81d4516e681a5e",
-  "created_at": "2026-04-19T23:16:14.643190",
+  "experiment_id": "25b9fff2726146b597661b70fb1bf0ea",
+  "created_at": "2026-04-19T23:22:15.957476",
   "model_name": "local",
   "model_commit": "local-cli",
   "code_version": "dev",
@@ -22,10 +22,10 @@
   },
   "source": {
     "type": "local",
-    "uri": "examples/data/input/synthetic_grid_60x60_tiff.zip",
+    "uri": "examples/data/input/ilha_maranhao_epsg31983.gpkg",
     "collection": "",
     "version": "",
-    "checksum": "282288b5c942a1e6d5677656fbf81c8ce10755f2db3e62b1d54a702eb0f0c696"
+    "checksum": "6d2951dfbd00d5c87fa11a7ff170b5117420459c4b01fc0ed13132abb6a69b04"
   },
   "input_format": "auto",
   "column_map": {},
@@ -40,26 +40,26 @@
     "bands": [
       "uso"
     ],
-    "interactive": false
+    "interactive": true
   },
-  "output_path": "outputs/experiments/8c5dfaf436b6480b9d81d4516e681a5e/output.tif",
+  "output_path": "outputs/experiments/25b9fff2726146b597661b70fb1bf0ea/output.tif",
   "artifacts": {
-    "output": "3da8fce234ed8e2ccbd3bbfa2fffdf5b14dfc8dfe7ae634964156b37db118e13",
-    "profiling": "b55b33205e391abb8956c4d77383214854a9d41fe319b3812c80b7285054aaea"
+    "output": "160db5ba667c1f15258cafccf424f86a41ecef89cd963a1169f0bb0c8df0ca2c",
+    "profiling": "ce4690ec816200c4758cf01f292d3bd613beb84dd16fa2b3598f2afd5c334e80"
   },
   "metrics": {
     "time_validate_sec": 0.0,
-    "time_load_sec": 0.03,
-    "time_run_sec": 0.77,
-    "time_save_sec": 0.013,
-    "time_total_sec": 0.812
+    "time_load_sec": 33.089,
+    "time_run_sec": 21.68,
+    "time_save_sec": 0.069,
+    "time_total_sec": 54.838
   },
   "status": "completed",
   "logs": [
-    "Loaded GeoTIFF: shape=(60, 60) start=1 crs=EPSG:31984",
+    "Rasterized vector: shape=(421, 406) resolution=100.0m",
     "Running steps 1 → 20...",
     "Simulation complete",
-    "Saved to outputs/experiments/8c5dfaf436b6480b9d81d4516e681a5e/output.tif",
-    "Saved profiling artifact → outputs/experiments/8c5dfaf436b6480b9d81d4516e681a5e/profiling_8c5dfaf4.md"
+    "Saved to outputs/experiments/25b9fff2726146b597661b70fb1bf0ea/output.tif",
+    "Saved profiling artifact → outputs/experiments/25b9fff2726146b597661b70fb1bf0ea/profiling_25b9fff2.md"
   ]
 }
