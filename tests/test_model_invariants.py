@@ -38,6 +38,7 @@ from brmangue.common.constants import (
     USOS_INUNDADOS,
     MANGUE, MANGUE_MIGRADO, MANGUE_INUNDADO,
     SOLO_MANGUE, SOLO_MANGUE_MIGRADO, SOLO_CANAL_FLUVIAL, SOLO_OUTROS,
+    VALID_SOLO,   # ← importar daqui
 )
 
 # ── paths ─────────────────────────────────────────────────────────────────────
@@ -56,7 +57,7 @@ N_STEPS       = 30
 # ── valid domains ─────────────────────────────────────────────────────────────
 
 VALID_USO  = set(range(1, 11))           # {1 … 10}
-VALID_SOLO = {SOLO_CANAL_FLUVIAL, SOLO_MANGUE, SOLO_MANGUE_MIGRADO, SOLO_OUTROS}
+
 MANGUE_SET = {MANGUE, MANGUE_MIGRADO, MANGUE_INUNDADO}
 
 # ── fixtures ──────────────────────────────────────────────────────────────────

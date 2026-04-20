@@ -11,12 +11,17 @@
 
 ## 📖 About
 
-**brmangue-dissmodel** implements spatially explicit models of coastal ecosystem processes using the **[DisSModel](https://github.com/LambdaGeo/dissmodel)** framework. Two coupled processes are modelled:
+**brmangue-dissmodel** implements spatially explicit models of coastal ecosystem
+processes using the **[DisSModel](https://github.com/LambdaGeo/dissmodel)** framework.
+Two coupled processes are modelled:
 
 1. **Flood Dynamics** — sea-level rise propagation and terrain elevation adjustments.
-2. **Mangrove Migration** — ecosystem response to rising sea levels, soil transitions, and sediment accretion.
+2. **Mangrove Migration** — ecosystem response to rising sea levels, soil transitions,
+   and sediment accretion.
 
-This version is focused entirely on the **Raster substrate** for high-performance vectorized simulations.
+This implementation is a Python/NumPy port of the original BR-MANGUE cellular
+automata model (Bezerra et al., 2014), focused entirely on the **Raster substrate**
+for high-performance vectorized simulations.
 
 ---
 
@@ -74,17 +79,20 @@ curl -X POST http://localhost:8000/submit_job \
 
 ### 🌊 Flood Dynamics (`flood_model.py`)
 
-Sea-level rise propagates across the landscape using a push-based neighbourhood algorithm.
+Sea-level rise propagates across the landscape using a push-based neighbourhood
+algorithm faithful to the original TerraME implementation (Bezerra et al., 2014).
 
 ### 🌿 Mangrove Migration (`mangrove_model.py`)
 
-Ecosystem transitions driven by tidal influence and flooding thresholds.
+Ecosystem transitions driven by tidal influence and flooding thresholds, including
+soil migration and optional sediment accretion (Alongi, 2008).
 
 ---
 
 ## 🗂️ Executor Architecture
 
-The project follows the DisSModel `ModelExecutor` pattern — each executor separates science from infrastructure.
+The project follows the DisSModel `ModelExecutor` pattern — each executor separates
+science from infrastructure.
 
 ### Executors available
 
@@ -128,6 +136,15 @@ brmangue-dissmodel/
 │   └── data/
 └── pyproject.toml
 ```
+
+---
+
+## 📚 References
+
+Bezerra, D. da S., Amaral, S., & Kampel, M. (2014). Impactos da Elevação do Nível
+Médio do Mar sobre o Ecossistema Manguezal: A Contribuição do Sensoriamento Remoto
+e Modelos Computacionais. *Ciência e Natura*, *35*(2), 152–162.
+https://doi.org/10.5902/2179460X12569
 
 ---
 
