@@ -1,6 +1,6 @@
-# brmangue-dissmodel 🌊
+# BR-MANGUE DisSModel 🌊
 
-> **Coastal flood and mangrove migration models (Raster version) built on top of [DisSModel](https://github.com/LambdaGeo/dissmodel).**
+> **Implementation of coastal flood and mangrove migration models based on Bezerra et al. (2014), built on top of [DisSModel](https://github.com/LambdaGeo/dissmodel).**
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://python.org)
