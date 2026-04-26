@@ -211,6 +211,7 @@ class BrmangueExecutor(ModelExecutor):
 
     def save(self, result, record: ExperimentRecord) -> ExperimentRecord:
         from brmangue.common.utils import default_output_uri
+        from dissmodel.io.raster import save_geotiff
         
         backend, meta = result
 
