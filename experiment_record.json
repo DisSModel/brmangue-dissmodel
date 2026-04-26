@@ -1,6 +1,6 @@
 {
-  "experiment_id": "157ae252cad24227995742ebafc5c5e8",
-  "created_at": "2026-04-20T11:03:19.817556",
+  "experiment_id": "71a38e629517406081e7d47ecb62bfcb",
+  "created_at": "2026-04-24T11:33:05.933007",
   "model_name": "local",
   "model_commit": "local-cli",
   "code_version": "dev",
@@ -28,11 +28,11 @@
       20
     ]
   },
-  "output_path": "outputs/experiments/157ae252cad24227995742ebafc5c5e8/validation",
+  "output_path": "outputs/experiments/71a38e629517406081e7d47ecb62bfcb/validation",
   "artifacts": {
     "plot": "c139dd3b2ba746e9b6973349ee7da8c99bb66369a91bc4b99730bc7ab24dbc0f",
-    "report": "3ca0ec0b2019de30f69e1a062c7920c806ba6a3b224677f031b624bf5bda80ba",
-    "profiling": "5a37530e49b4a4fe6179adc31695edbfbd34829fe0e6bce907227e7f47899e77"
+    "report": "1a651f8e6f37fc8ff1319db336251c768236d4daa8ec18f7602a5cc566b72a93",
+    "profiling": "31ea3ffdeb4578f307f6ec79c048f870bb7026f9ea2476e4d3a66bf23bdedc2c"
   },
   "metrics": {
     "1": {
@@ -151,10 +151,10 @@
       }
     },
     "time_validate_sec": 0.0,
-    "time_load_sec": 0.645,
-    "time_run_sec": 1.462,
-    "time_save_sec": 0.001,
-    "time_total_sec": 2.108
+    "time_load_sec": 4.73,
+    "time_run_sec": 1.764,
+    "time_save_sec": 0.012,
+    "time_total_sec": 6.507
   },
   "status": "completed",
   "logs": [
@@ -165,7 +165,7 @@
     "  Loaded golden step 15: 50,496 rows",
     "  Loaded golden step 20: 50,496 rows",
     "Running Model (1 → 20)...",
-    "Model done: 30.0 ms/step",
+    "Model done: 21.5 ms/step",
     "Calculating metrics...",
     "  step=01  uso: match=98.9%  MAE=0.06803  max_err=6.00000",
     "  step=01  solo: match=98.6%  MAE=0.08215  max_err=6.00000",
@@ -183,8 +183,8 @@
     "  step=20  solo: match=99.8%  MAE=0.00891  max_err=6.00000",
     "  step=20  alt: match=90.7%  MAE=0.00329  max_err=0.21405",
     "Generating scatter plots...",
-    "Saved scatter.png → outputs/experiments/157ae252cad24227995742ebafc5c5e8/validation/scatter.png",
-    "Saved report.md   → outputs/experiments/157ae252cad24227995742ebafc5c5e8/validation/report.md",
-    "Saved profiling artifact → outputs/experiments/157ae252cad24227995742ebafc5c5e8/profiling_157ae252.md"
+    "Saved scatter.png → outputs/experiments/71a38e629517406081e7d47ecb62bfcb/validation/scatter.png",
+    "Saved report.md   → outputs/experiments/71a38e629517406081e7d47ecb62bfcb/validation/report.md",
+    "Saved profiling artifact → outputs/experiments/71a38e629517406081e7d47ecb62bfcb/profiling_71a38e62.md"
   ]
 }

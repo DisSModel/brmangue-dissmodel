@@ -210,14 +210,14 @@ class BrmangueExecutor(ModelExecutor):
         return backend, meta
 
     def save(self, result, record: ExperimentRecord) -> ExperimentRecord:
+        from brmangue.common.utils import default_output_uri
         from dissmodel.io.raster import save_geotiff
-
+        
         backend, meta = result
 
-        # Se não houver output_path, usa um diretório local relativo ao experimento
         uri = (
             record.output_path
-            or f"outputs/experiments/{record.experiment_id}/output.tif"
+            or default_output_uri(record.experiment_id, ext="tif")
         )
         checksum = save_geotiff(
             (backend, meta), uri,
