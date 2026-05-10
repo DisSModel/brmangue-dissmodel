@@ -57,6 +57,20 @@ class BrmangueExecutor(ModelExecutor):
 
     # ── public contract ───────────────────────────────────────────────────────
 
+    @staticmethod
+    def from_cube(backend: RasterBackend) -> tuple:
+        """
+        Adapts a RasterBackend from DisSCube to the internal format
+        expected by BrmangueExecutor (backend, meta, start_time).
+        """
+        meta = {
+            "crs": backend.crs,
+            "transform": backend.transform,
+            "tags": {}
+        }
+        start_time = 1
+        return backend, meta, start_time
+
     def load(self, record: ExperimentRecord):
         """
         Load RasterBackend from GeoTIFF or rasterize a vector file.
