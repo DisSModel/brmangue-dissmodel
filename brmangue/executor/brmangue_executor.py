@@ -10,8 +10,8 @@ from brmangue.common.constants import (
     SOLO_COLORS, SOLO_LABELS,
     SOLO_LEITO_RIO, 
 )
-from brmangue.models.flood_model    import FloodModel
-from brmangue.models.mangrove_model import MangroveModel
+from brmangue.models.raster.flood_model    import FloodModel
+from brmangue.models.raster.mangrove_model import MangroveModel
 
 # ── visualization config ──────────────────────────────────────────────────────
 
@@ -56,6 +56,20 @@ class BrmangueExecutor(ModelExecutor):
     name = "brmangue"
 
     # ── public contract ───────────────────────────────────────────────────────
+
+    @staticmethod
+    def from_cube(backend: RasterBackend) -> tuple:
+        """
+        Adapts a RasterBackend from DisSCube to the internal format
+        expected by BrmangueExecutor (backend, meta, start_time).
+        """
+        meta = {
+            "crs": backend.crs,
+            "transform": backend.transform,
+            "tags": {}
+        }
+        start_time = 1
+        return backend, meta, start_time
 
     def load(self, record: ExperimentRecord):
         """

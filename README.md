@@ -68,7 +68,7 @@ curl -X POST http://localhost:8000/submit_job \
   -H "Content-Type: application/json" \
   -d '{
     "model_name":    "brmangue",
-    "input_dataset": "s3://dissmodel-inputs/mangue_grid.tif",
+    "input_dataset": "s3://dissmodel-inputs/ilha_maranhao_epsg31983.tif",
     "parameters":    {"end_time": 88, "taxa_elevacao": 0.011}
   }'
 ```
