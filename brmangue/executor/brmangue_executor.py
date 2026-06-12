@@ -10,8 +10,8 @@ from brmangue.common.constants import (
     SOLO_COLORS, SOLO_LABELS,
     SOLO_LEITO_RIO, 
 )
-from brmangue.models.flood_model    import FloodModel
-from brmangue.models.mangrove_model import MangroveModel
+from brmangue.models.raster.flood_model    import FloodModel
+from brmangue.models.raster.mangrove_model import MangroveModel
 
 # ── visualization config ──────────────────────────────────────────────────────
 
