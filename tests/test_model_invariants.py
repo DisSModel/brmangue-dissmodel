@@ -31,8 +31,8 @@ import pytest
 from dissmodel.core               import Environment
 from dissmodel.geo.raster.backend import RasterBackend
 
-from brmangue.models.flood_model    import FloodModel
-from brmangue.models.mangrove_model import MangroveModel
+from brmangue.models.raster.flood_model    import FloodModel
+from brmangue.models.raster.mangrove_model import MangroveModel
 
 from brmangue.common.constants import (
     USOS_INUNDADOS,

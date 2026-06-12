@@ -52,8 +52,8 @@ from dissmodel.io                 import load_dataset
 from dissmodel.io._utils          import write_bytes, write_text
 from dissmodel.executor.config    import settings
 
-from brmangue.models.flood_model    import FloodModel    as RasterFlood
-from brmangue.models.mangrove_model import MangroveModel as RasterMangue
+from brmangue.models.raster.flood_model    import FloodModel    as RasterFlood
+from brmangue.models.raster.mangrove_model import MangroveModel as RasterMangue
 from brmangue.common.constants      import CRS, CELL_SIZE
 
 BANDS: dict[str, str] = {
