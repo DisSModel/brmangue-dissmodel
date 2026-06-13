@@ -163,7 +163,7 @@ python examples/main_benchmark.py run \
 
 ```bash
 # From source
-git clone https://github.com/lambdageo/brmangue-dissmodel.git
+git clone https://github.com/DisSModel/brmangue-dissmodel.git
 cd brmangue-dissmodel
 pip install -e .
 ```

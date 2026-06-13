@@ -32,6 +32,8 @@ ENV/
 # Project specific
 experiment_record.json
 outputs/
+examples/data/**/*.record.json
+examples/data/**/profiling_*.md
 
 *.tif
 *.tiff
