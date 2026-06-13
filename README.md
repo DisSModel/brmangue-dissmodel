@@ -19,9 +19,14 @@ Two coupled processes are modelled:
 2. **Mangrove Migration** — ecosystem response to rising sea levels, soil transitions,
    and sediment accretion.
 
-This implementation is a Python/NumPy port of the original BR-MANGUE cellular
-automata model (Bezerra et al., 2014), focused entirely on the **Raster substrate**
-for high-performance vectorized simulations.
+The original BR-MANGUE cellular automata model (Bezerra et al., 2014) is provided
+on **two spatial substrates**:
+
+- **Raster** (`brmangue.models.raster`) — NumPy/RasterBackend, vectorized and fast.
+  This is the canonical implementation, validated against TerraME golden outputs.
+- **Vector** (`brmangue.models.vector`) — GeoDataFrame/libpysal, cell-by-cell over
+  real polygon geometry. Numerically equivalent to the raster implementation
+  (verified by the benchmark executor).
 
 ---
 
@@ -30,20 +35,33 @@ for high-performance vectorized simulations.
 ### CLI local (development)
 
 ```bash
-# BR-MANGUE simulation (NumPy-based, fast)
-python examples/main.py run \
+# Raster simulation (NumPy-based, fast)
+python examples/main_raster.py run \
   --input  examples/data/input/synthetic_grid_60x60_tiff.zip \
   --output examples/data/output/saida.tiff \
   --param  interactive=true \
   --param  end_time=20
 
-# Load calibrated parameters from TOML
-python examples/main.py run \
+# Vector simulation (GeoDataFrame-based)
+python examples/main_vector.py run \
+  --input  examples/data/input/synthetic_grid_60x60_shp.zip \
+  --output examples/data/output/saida.gpkg \
+  --param  end_time=20
+
+# Load calibrated parameters from TOML (works for both substrates)
+python examples/main_raster.py run \
   --input  examples/data/input/synthetic_grid_60x60_tiff.zip \
   --toml   examples/model.toml
 
+# Vector vs Raster equivalence benchmark
+python examples/main_benchmark.py run \
+  --input  examples/data/input/synthetic_grid_60x60_shp.zip \
+  --param  end_time=10 \
+  --param  taxa_elevacao=0.011 \
+  --param  tolerance=0.05
+
 # Validate executor data contract without running
-python examples/main.py validate \
+python examples/main_raster.py validate \
   --input examples/data/input/synthetic_grid_60x60_tiff.zip
 
 # Prepare raster from vector
@@ -67,7 +85,7 @@ curl -X POST http://localhost:8000/submit_job \
   -H "X-API-Key: chave-sergio" \
   -H "Content-Type: application/json" \
   -d '{
-    "model_name":    "brmangue",
+    "model_name":    "brmangue_raster",
     "input_dataset": "s3://dissmodel-inputs/ilha_maranhao_epsg31983.tif",
     "parameters":    {"end_time": 88, "taxa_elevacao": 0.011}
   }'
@@ -87,6 +105,9 @@ algorithm faithful to the original TerraME implementation (Bezerra et al., 2014)
 Ecosystem transitions driven by tidal influence and flooding thresholds, including
 soil migration and optional sediment accretion (Alongi, 2008).
 
+Both processes exist in raster and vector form with identical equations,
+thresholds, parameter names, and update ordering.
+
 ---
 
 ## 🗂️ Executor Architecture
@@ -98,7 +119,9 @@ science from infrastructure.
 
 | name | Substrate | Input → Output | Description |
 |------|-----------|----------------|-------------|
-| `brmangue` | RasterBackend / NumPy | Shapefile / GeoTIFF → GeoTIFF | Production simulation |
+| `brmangue_raster` | RasterBackend / NumPy | Shapefile / GeoTIFF → GeoTIFF | Production simulation (canonical) |
+| `brmangue_vector` | GeoDataFrame / libpysal | Shapefile → GeoPackage | Vector simulation over real geometry |
+| `brmangue_benchmark` | both | Shapefile → MD + PNG | Vector vs raster equivalence check |
 | `validation` | RasterBackend | Shapefile → MD + PNG | Validation against golden CSVs (TerraME) |
 
 ---
@@ -122,15 +145,23 @@ brmangue-dissmodel/
 │   ├── __init__.py
 │   ├── executor/                         # ModelExecutor implementations
 │   │   ├── __init__.py                   # imports executors → auto-registration
-│   │   ├── brmangue_executor.py          # Production simulation
+│   │   ├── raster_executor.py            # Production simulation (raster)
+│   │   ├── vector_executor.py            # Vector simulation
+│   │   ├── benchmark_executor.py         # Vector vs raster equivalence
 │   │   └── validation_executor.py        # Validation against TerraME
-│   ├── models/                           # NumPy-based models
-│   │   ├── flood_model.py
-│   │   └── mangrove_model.py
+│   ├── models/
+│   │   ├── raster/                       # NumPy-based models (canonical)
+│   │   │   ├── flood_model.py
+│   │   │   └── mangrove_model.py
+│   │   └── vector/                       # GeoDataFrame-based models
+│   │       ├── flood_model.py
+│   │       └── mangrove_model.py
 │   └── common/
 │       └── constants.py                  # TIFF_BANDS, CRS, USO_COLORS, ...
 ├── examples/
-│   ├── main.py                           # BrmangueExecutor via CLI
+│   ├── main_raster.py                    # BrmangueRasterExecutor via CLI
+│   ├── main_vector.py                    # BrmangueVectorExecutor via CLI
+│   ├── main_benchmark.py                 # BrmangueBenchmarkExecutor via CLI
 │   ├── prepare_raster.py                 # Vector to GeoTIFF converter
 │   ├── model.toml                        # Simulation parameters
 │   └── data/
