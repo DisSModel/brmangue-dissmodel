@@ -1,4 +1,4 @@
-# brmangue/executor/__init__.py
+# brmangue/executors/__init__.py
 
 from .raster_executor import BrmangueRasterExecutor
 from .vector_executor import BrmangueVectorExecutor

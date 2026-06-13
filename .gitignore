@@ -30,6 +30,8 @@ venv/
 ENV/
 
 # Project specific
+experiment_record.json
+outputs/
 
 *.tif
 *.tiff

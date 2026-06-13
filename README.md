@@ -68,7 +68,7 @@ python examples/main_raster.py validate \
 python examples/prepare_raster.py data/input.shp --output data/input.tif
 
 # Run Validation against TerraME golden CSVs
-python brmangue/executor/validation_executor.py run \
+python src/brmangue/executors/validation_executor.py run \
   --input  examples/data/input/elevacao_pol.zip \
   --param  golden_dir=tests/fixtures/golden \
   --param  end_time=20 \
@@ -82,7 +82,7 @@ python brmangue/executor/validation_executor.py run \
 ```bash
 # Submit job
 curl -X POST http://localhost:8000/submit_job \
-  -H "X-API-Key: chave-sergio" \
+  -H "X-API-Key: <your-api-key>" \
   -H "Content-Type: application/json" \
   -d '{
     "model_name":    "brmangue_raster",
@@ -119,10 +119,43 @@ science from infrastructure.
 
 | name | Substrate | Input → Output | Description |
 |------|-----------|----------------|-------------|
-| `brmangue_raster` | RasterBackend / NumPy | Shapefile / GeoTIFF → GeoTIFF | Production simulation (canonical) |
-| `brmangue_vector` | GeoDataFrame / libpysal | Shapefile → GeoPackage | Vector simulation over real geometry |
-| `brmangue_benchmark` | both | Shapefile → MD + PNG | Vector vs raster equivalence check |
-| `validation` | RasterBackend | Shapefile → MD + PNG | Validation against golden CSVs (TerraME) |
+| `brmangue_raster` | RasterBackend / NumPy | Shapefile / GeoTIFF → GeoTIFF | Production simulation (canonical, validated against TerraME) |
+| `brmangue_vector` | GeoDataFrame / libpysal | Shapefile / ZIP → GeoPackage | Cell-by-cell vector simulation over real polygon geometry |
+| `brmangue_benchmark` | raster + vector | Shapefile / ZIP → scatter.png + report.md | Runs both substrates on the same input and reports match %/MAE/RMSE per band |
+| `validation` | RasterBackend | Shapefile / ZIP → scatter.png + report.md | Compares raster output against TerraME golden CSVs at configurable checkpoints |
+
+#### BrmangueVectorExecutor — usage example
+
+```bash
+# Vector simulation over real geometry (GeoDataFrame / libpysal)
+python examples/main_vector.py run \
+  --input  examples/data/input/synthetic_grid_60x60_shp.zip \
+  --output examples/data/output/saida.gpkg \
+  --param  end_time=88 \
+  --param  taxa_elevacao=0.5 \
+  --param  altura_mare=6.0
+
+# With column remapping (source uses non-canonical names)
+python examples/main_vector.py run \
+  --input      examples/data/input/synthetic_grid_60x60_shp.zip \
+  --column-map uso=land_use alt=elevation solo=soil
+```
+
+#### BrmangueBenchmarkExecutor — usage example
+
+```bash
+# Runs both Vector and Raster models on the same input; reports match per band
+python examples/main_benchmark.py run \
+  --input  examples/data/input/synthetic_grid_60x60_shp.zip \
+  --param  end_time=10 \
+  --param  taxa_elevacao=0.011 \
+  --param  altura_mare=6.0 \
+  --param  tolerance=0.05
+
+# Output artifacts written to outputs/experiments/<id>/benchmark/
+#   scatter.png — per-band Vector vs Raster scatter plots
+#   report.md   — runtime (ms/step) and accuracy table
+```
 
 ---
 
@@ -141,23 +174,29 @@ pip install -e .
 
 ```
 brmangue-dissmodel/
-├── brmangue/
-│   ├── __init__.py
-│   ├── executor/                         # ModelExecutor implementations
-│   │   ├── __init__.py                   # imports executors → auto-registration
-│   │   ├── raster_executor.py            # Production simulation (raster)
-│   │   ├── vector_executor.py            # Vector simulation
-│   │   ├── benchmark_executor.py         # Vector vs raster equivalence
-│   │   └── validation_executor.py        # Validation against TerraME
-│   ├── models/
-│   │   ├── raster/                       # NumPy-based models (canonical)
-│   │   │   ├── flood_model.py
-│   │   │   └── mangrove_model.py
-│   │   └── vector/                       # GeoDataFrame-based models
-│   │       ├── flood_model.py
-│   │       └── mangrove_model.py
-│   └── common/
-│       └── constants.py                  # TIFF_BANDS, CRS, USO_COLORS, ...
+├── src/
+│   └── brmangue/
+│       ├── __init__.py
+│       ├── common/
+│       │   ├── constants.py              # TIFF_BANDS, CRS, USO_COLORS, ...
+│       │   └── utils.py                  # default_output_uri helper
+│       ├── executors/                    # ModelExecutor implementations
+│       │   ├── __init__.py               # imports executors → auto-registration
+│       │   ├── raster_executor.py        # Production simulation (raster, canonical)
+│       │   ├── vector_executor.py        # Vector simulation over real geometry
+│       │   ├── benchmark_executor.py     # Vector vs raster equivalence check
+│       │   └── validation_executor.py    # Validation against TerraME golden CSVs
+│       └── models/
+│           ├── raster/                   # NumPy-based models (canonical)
+│           │   ├── flood_model.py
+│           │   └── mangrove_model.py
+│           └── vector/                   # GeoDataFrame-based models
+│               ├── flood_model.py
+│               └── mangrove_model.py
+├── tests/
+│   ├── fixtures/golden/                  # TerraME reference CSVs (step_01..step_20)
+│   ├── test_transition_rules.py
+│   └── test_model_invariants.py
 ├── examples/
 │   ├── main_raster.py                    # BrmangueRasterExecutor via CLI
 │   ├── main_vector.py                    # BrmangueVectorExecutor via CLI
@@ -166,6 +205,45 @@ brmangue-dissmodel/
 │   ├── model.toml                        # Simulation parameters
 │   └── data/
 └── pyproject.toml
+```
+
+---
+
+## 🧪 Testing & Validation
+
+### Unit & invariant tests
+
+Two test modules cover model correctness without external data:
+
+- **`tests/test_transition_rules.py`** — analytical tests on 3×3 synthetic grids
+  with hand-calculated expected values (flood propagation, mangrove soil/use
+  migration, altitude blocking).
+- **`tests/test_model_invariants.py`** — structural invariants on a 5×5 real grid
+  (flooded cells monotonically non-decreasing, `SOLO_MANGUE_MIGRADO` never
+  reverts, masked cells never change, etc.).
+
+```bash
+pytest tests/ -v
+```
+
+### Validation against TerraME
+
+`ValidationExecutor` (`src/brmangue/executors/validation_executor.py`,
+`name="validation"`) runs the raster model and compares its output step-by-step
+against reference CSVs generated by the original TerraME/Lua model
+(Bezerra et al., 2014), located in `tests/fixtures/golden/step_NN.csv`
+(currently step_01 … step_20).
+
+Metrics reported per band (`uso`, `solo`, `alt`) at each checkpoint:
+match %, MAE, RMSE, max_err.
+
+```bash
+# See Quick Start above for the full CLI invocation:
+python src/brmangue/executors/validation_executor.py run \
+  --input  examples/data/input/elevacao_pol.zip \
+  --param  golden_dir=tests/fixtures/golden \
+  --param  end_time=20 \
+  --param  checkpoints=[1,5,10,15,20]
 ```
 
 ---
