@@ -22,7 +22,7 @@ Output artifacts
 
 Usage
 -----
-    python brmangue/executor/validation_executor.py run \\
+    python src/brmangue/executors/validation_executor.py run \\
       --input  examples/data/input/elevacao_pol.zip \\
       --output examples/data/output/validation \\
       --param  golden_dir=tests/fixtures/golden \\
@@ -215,7 +215,7 @@ class ValidationExecutor(ModelExecutor):
     def save(self, result: dict, record: ExperimentRecord) -> ExperimentRecord:
         base_uri = (
             record.output_path
-            or f"outputs/experiments/{record.experiment_id}/validation"
+            or f"{settings.default_output_base}/experiments/{record.experiment_id}/validation"
         )
 
         record.add_artifact(

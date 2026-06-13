@@ -1,7 +1,10 @@
-from brmangue.executor.vector_executor import BrmangueVectorExecutor
+from brmangue.executors.vector_executor import BrmangueVectorExecutor
 
+import os
 import matplotlib
-matplotlib.use('tkagg')
+# Use interactive backend only when a display is available (e.g. local Linux desktop);
+# fall back to non-interactive Agg in headless environments (CI, SSH, containers).
+matplotlib.use("tkagg" if os.environ.get("DISPLAY") else "Agg")
 
 from dissmodel.executor.cli import run_cli
 
