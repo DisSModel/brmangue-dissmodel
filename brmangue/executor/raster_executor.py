@@ -37,9 +37,9 @@ SHAPEFILE_DEFAULTS: dict[str, int | float] = {
 CANONICAL_BANDS = {"uso", "alt", "solo"}
 
 
-class BrmangueExecutor(ModelExecutor):
+class BrmangueRasterExecutor(ModelExecutor):
     """
-    Executor for the BR-MANGUE dynamics simulation.
+    Executor for the raster-based BR-MANGUE dynamics simulation.
 
     Accepts GeoTIFF (resume) or vector (new simulation) as input.
     Couples FloodModel + MangroveModel over a shared RasterBackend.
@@ -53,7 +53,7 @@ class BrmangueExecutor(ModelExecutor):
     before any model sees the data.
     """
 
-    name = "brmangue"
+    name = "brmangue_raster"
 
     # ── public contract ───────────────────────────────────────────────────────
 
@@ -61,7 +61,7 @@ class BrmangueExecutor(ModelExecutor):
     def from_cube(backend: RasterBackend) -> tuple:
         """
         Adapts a RasterBackend from DisSCube to the internal format
-        expected by BrmangueExecutor (backend, meta, start_time).
+        expected by BrmangueRasterExecutor (backend, meta, start_time).
         """
         meta = {
             "crs": backend.crs,
@@ -300,4 +300,4 @@ def _detect_format(uri: str) -> str:
 
 
 if __name__ == "__main__":
-    run_cli(BrmangueExecutor)
+    run_cli(BrmangueRasterExecutor)
