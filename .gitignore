@@ -44,6 +44,9 @@ examples/data/**/profiling_*.md
 *.prj
 *.zip
 
+# Exceção: fixtures de validação precisam estar versionadas para o CI
+!examples/data/input/elevacao_pol.zip
+
 # IDEs
 .vscode/
 .idea/
