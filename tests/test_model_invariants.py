@@ -263,3 +263,123 @@ def test_masked_cells_never_change(backend_sequence):
                 f"Step {step:02d}: band '{band}' has non-zero values "
                 f"outside the mask — {int((vals != 0).sum())} cells affected."
             )
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Regressão: os checkpoints devem ser independentes de end_time
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# Antes da correção, o laço de métricas lia ``backend.get(band)`` APÓS o término
+# de ``env.run()``, comparando o MESMO estado final contra todos os CSVs golden.
+# O sintoma observável era que a métrica de step=01 mudava conforme o end_time:
+#
+#     end_time=3   → step=01  uso: match=99.4%
+#     end_time=20  → step=01  uso: match=98.9%
+#
+# ...o que é impossível se fosse de fato o passo 1. Este teste é o detector.
+
+GOLDEN_DIR = pathlib.Path(__file__).parent / "fixtures" / "golden"
+
+
+def _validation_metrics(end_time: int, checkpoints: list[int]) -> dict:
+    from brmangue.executors.validation_executor import ValidationExecutor
+    from dissmodel.executor import ExperimentRecord
+
+    executor = ValidationExecutor()
+    record = ExperimentRecord(
+        model_name="validation",
+        source={"uri": str(INPUT_ZIP)},
+        parameters={
+            "golden_dir":    str(GOLDEN_DIR),
+            "end_time":      end_time,
+            "taxa_elevacao": 0.05,
+            "altura_mare":   6.0,
+            "checkpoints":   checkpoints,
+        },
+    )
+    return executor.run(executor.load(record), record)["metrics"]
+
+
+@pytest.mark.skipif(not INPUT_ZIP.exists(), reason=f"Input data not found: {INPUT_ZIP}")
+@pytest.mark.skipif(not GOLDEN_DIR.exists(), reason=f"Golden dir not found: {GOLDEN_DIR}")
+def test_checkpoint_metrics_independent_of_end_time():
+    """step=01 deve ser idêntico rodando 3 passos ou 20 passos."""
+    short = _validation_metrics(end_time=3,  checkpoints=[1])
+    long_ = _validation_metrics(end_time=19, checkpoints=[1, 5, 10, 19])
+
+    for band in ("uso", "solo", "alt"):
+        a = short["1"][band]
+        b = long_["1"][band]
+        assert a["match_pct"] == pytest.approx(b["match_pct"], abs=1e-9), (
+            f"banda {band}: match de step=01 depende de end_time "
+            f"({a['match_pct']:.4f}% com 3 passos vs {b['match_pct']:.4f}% com 20) "
+            f"— o snapshot por checkpoint não está sendo usado"
+        )
+        assert a["mae"] == pytest.approx(b["mae"], abs=1e-12), (
+            f"banda {band}: MAE de step=01 depende de end_time"
+        )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Regression: categorical bands must match TerraME exactly
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# With the golden step offset applied (step_01.csv is the initial state, so
+# simulation step N maps to step_{N+1}.csv), the categorical outputs agree with
+# TerraME cell for cell. Any drift here is a real behavioural divergence, not
+# rounding — these bands are integers.
+
+@pytest.mark.skipif(not INPUT_ZIP.exists(), reason=f"Input data not found: {INPUT_ZIP}")
+@pytest.mark.skipif(not GOLDEN_DIR.exists(), reason=f"Golden dir not found: {GOLDEN_DIR}")
+@pytest.mark.parametrize("step", [1, 5, 10, 19])
+def test_categorical_bands_match_terrame_exactly(step):
+    """`uso` and `solo` must agree with TerraME on every cell."""
+    metrics = _validation_metrics(end_time=19, checkpoints=[1, 5, 10, 19])
+
+    for band in ("uso", "solo"):
+        m = metrics[str(step)][band]
+        assert m["match_pct"] == pytest.approx(100.0, abs=1e-9), (
+            f"step {step}, band {band}: match={m['match_pct']:.4f}% "
+            f"(max_err={m['max_err']}). Categorical parity lost."
+        )
+        assert m["mae"] == pytest.approx(0.0, abs=1e-12), (
+            f"step {step}, band {band}: MAE={m['mae']} — expected exact match"
+        )
+
+
+@pytest.mark.skipif(not INPUT_ZIP.exists(), reason=f"Input data not found: {INPUT_ZIP}")
+@pytest.mark.skipif(not GOLDEN_DIR.exists(), reason=f"Golden dir not found: {GOLDEN_DIR}")
+def test_flood_model_floods_with_laboratory_parameters():
+    """FloodModel must trigger land-use transitions at the lab's sea-level rate.
+
+    The reference scenario (`taxa_elevacao=0.05`) never floods a single cell:
+    the lowest cell adjacent to a source sits at 1.0 m and the sea only reaches
+    1.0 m at step 20, by which point flux diffusion has raised it further. The
+    golden CSVs confirm TerraME behaves identically (0 newly flooded cells in
+    all 20 steps), so the Python model is faithful — but that scenario leaves
+    the flood component unexercised.
+
+    The original laboratory script (`lab1.lua`) uses `TAXA_ELEVACAO_MAR = 0.5`
+    with `FINAL_TIME = 11`. This test pins that the component does fire under
+    those parameters, so the coverage gap cannot reappear silently.
+    """
+    import numpy as np
+    from dissmodel.core import Environment
+    from brmangue.executors.validation_executor import _build_raster
+    from brmangue.models.raster.flood_model import FloodModel
+    from brmangue.models.raster.mangrove_model import MangroveModel
+    from dissmodel.io import load_dataset
+
+    gdf, _ = load_dataset(str(INPUT_ZIP), fmt="vector")
+    gdf.columns = [c.lower() for c in gdf.columns]
+    gdf = gdf.sort_values(["row", "col"]).reset_index(drop=True)
+    backend, _, _ = _build_raster(gdf)
+
+    env = Environment(start_time=1, end_time=11)
+    flood = FloodModel(backend=backend, taxa_elevacao=0.5)
+    MangroveModel(backend=backend, taxa_elevacao=0.5, altura_mare=6.0)
+    env.run()
+
+    assert flood.flooded_cells > 0, (
+        "FloodModel flooded no cells even at the laboratory sea-level rate "
+        "(taxa_elevacao=0.5, 11 steps). The flood component is not firing."
+    )
