@@ -52,9 +52,36 @@ from dissmodel.io                 import load_dataset
 from dissmodel.io._utils          import write_bytes, write_text
 from dissmodel.executor.config    import settings
 
+from dissmodel.geo.raster.raster_model import RasterModel
+
 from brmangue.models.raster.flood_model    import FloodModel    as RasterFlood
 from brmangue.models.raster.mangrove_model import MangroveModel as RasterMangue
 from brmangue.common.constants      import CRS, CELL_SIZE
+
+
+class CheckpointModel(RasterModel):
+    """Captura o estado das bandas ao final dos passos listados.
+
+    Deve ser registrado DEPOIS de FloodModel e MangroveModel: o
+    ``Environment`` executa os modelos na ordem de registro, portanto o
+    snapshot reflete o estado ao FINAL do passo ``t``.
+
+    Sem isso, o laço de métricas lê ``backend.get(band)`` após o término de
+    ``env.run()`` e compara o MESMO estado final contra todos os CSVs golden.
+    """
+
+    def setup(self, backend, bands, checkpoints):
+        super().setup(backend)
+        self.bands       = list(bands)
+        self.checkpoints = set(int(c) for c in checkpoints)
+        self.snapshots: dict[int, dict[str, np.ndarray]] = {}
+
+    def execute(self):
+        t = int(self.env.now())
+        if t in self.checkpoints:
+            self.snapshots[t] = {
+                b: np.asarray(self.backend.get(b)).copy() for b in self.bands
+            }
 
 BANDS: dict[str, str] = {
     "uso":  "exact",
@@ -63,6 +90,11 @@ BANDS: dict[str, str] = {
 }
 
 DEFAULT_CHECKPOINTS = [1, 5, 10, 15, 20, 25, 30]
+
+# TerraME golden CSVs are indexed on state, not on executions: step_01.csv is
+# the initial state. Python's step N therefore corresponds to step_{N+1}.csv.
+# See the explanatory comment in load() before changing this.
+GOLDEN_STEP_OFFSET = 1
 
 
 class ValidationExecutor(ModelExecutor):
@@ -95,21 +127,43 @@ class ValidationExecutor(ModelExecutor):
         record.add_log(f"Loaded shapefile: {len(gdf):,} cells  crs={gdf.crs}")
 
         # ── golden CSVs ───────────────────────────────────────────────────────
+        #
+        # INDEXING CONVENTION — read before changing this.
+        #
+        # The TerraME golden CSVs are 1-indexed on the *state*, not on the
+        # *number of executions*: ``step_01.csv`` is the INITIAL state, before
+        # the model has run even once (verified: 0 cells differ from the input
+        # shapefile). So the state after N simulated steps lives in
+        # ``step_{N+1}.csv``.
+        #
+        # DisSModel, in contrast, indexes on executions: ``env.now() == 1``
+        # already reflects one execution of FloodModel + MangroveModel.
+        #
+        # Comparing step N against ``step_{N:02d}.csv`` therefore compares
+        # Python's state after N steps against TerraME's state after N-1 — a
+        # one-step lag. On the Maranhão Island dataset that inflated the ``alt``
+        # MAE by a factor of ~220 at the first checkpoint.
         golden_dir = pathlib.Path(record.parameters["golden_dir"])
         golden_map: dict[int, pd.DataFrame] = {}
 
         for step in checkpoints:
-            path = golden_dir / f"step_{step:02d}.csv"
+            golden_step = step + GOLDEN_STEP_OFFSET
+            path = golden_dir / f"step_{golden_step:02d}.csv"
             if not path.exists():
                 raise FileNotFoundError(
                     f"Golden file not found: {path}\n"
+                    f"(simulation step {step} maps to golden file "
+                    f"step_{golden_step:02d}.csv; step_01.csv is the initial state)\n"
                     f"Run the TerraME model first and place CSVs in {golden_dir}"
                 )
             df = pd.read_csv(path)
             df.columns = [c.lower() for c in df.columns]
             df = df.sort_values(["row", "col"]).reset_index(drop=True)
             golden_map[step] = df
-            record.add_log(f"  Loaded golden step {step:02d}: {len(df):,} rows")
+            record.add_log(
+                f"  Loaded golden step {golden_step:02d} "
+                f"(simulation step {step:02d}): {len(df):,} rows"
+            )
 
         return gdf, golden_map
 
@@ -156,6 +210,11 @@ class ValidationExecutor(ModelExecutor):
         env = Environment(start_time=1, end_time=end_time)
         RasterFlood(backend=backend, taxa_elevacao=taxa_elevacao)
         RasterMangue(backend=backend, taxa_elevacao=taxa_elevacao, altura_mare=altura_mare)
+        checkpointer = CheckpointModel(          # registrado POR ÚLTIMO
+            backend     = backend,
+            bands       = list(BANDS),
+            checkpoints = checkpoints,
+        )
 
         t0     = time.perf_counter()
         env.run()
@@ -170,11 +229,18 @@ class ValidationExecutor(ModelExecutor):
             golden    = golden_map[step]
             step_data = {}
 
+            snap = checkpointer.snapshots.get(step)
+            if snap is None:
+                record.add_log(
+                    f"  step={step:02d}: sem snapshot (fora do intervalo 1..{end_time}) — ignorado"
+                )
+                continue
+
             for band, strategy in BANDS.items():
                 if band not in golden.columns:
                     continue
 
-                ras_vals  = backend.get(band)[rows_idx, cols_idx].astype(float)
+                ras_vals  = snap[band][rows_idx, cols_idx].astype(float)
                 gold_vals = golden[band].values.astype(float)
                 tol       = alt_atol if strategy == "approx" else 0.0
 
