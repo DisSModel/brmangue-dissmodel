@@ -94,7 +94,7 @@ ORIGIN_Y  = 9_700_000.0  # UTM Northing
 CRS       = "EPSG:31984"
 CELL_SIZE = 100.0         # metros
 
-# ── GeoTIFF: especificação de bandas (nome, dtype numpy, nodata) ──────────────
+# ── GeoTIFF: band specification (name, numpy dtype, nodata) ───────────────────
 TIFF_BANDS: list[tuple[str, str, float]] = [
     ("uso",  "int16",   0),
     ("alt",  "float32", -9999.0),
