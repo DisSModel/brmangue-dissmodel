@@ -265,17 +265,17 @@ def test_masked_cells_never_change(backend_sequence):
             )
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Regressão: os checkpoints devem ser independentes de end_time
+# Regression: checkpoint metrics must be independent of end_time
 # ══════════════════════════════════════════════════════════════════════════════
 #
-# Antes da correção, o laço de métricas lia ``backend.get(band)`` APÓS o término
-# de ``env.run()``, comparando o MESMO estado final contra todos os CSVs golden.
-# O sintoma observável era que a métrica de step=01 mudava conforme o end_time:
+# Before the fix, the metrics loop read ``backend.get(band)`` AFTER ``env.run()``
+# had finished, comparing the SAME final state against every golden CSV. The
+# observable symptom was that the step=01 metric changed with end_time:
 #
-#     end_time=3   → step=01  uso: match=99.4%
-#     end_time=20  → step=01  uso: match=98.9%
+#     end_time=3   -> step=01  uso: match=99.4%
+#     end_time=20  -> step=01  uso: match=98.9%
 #
-# ...o que é impossível se fosse de fato o passo 1. Este teste é o detector.
+# ...which is impossible if it were really step 1. This test is the detector.
 
 GOLDEN_DIR = pathlib.Path(__file__).parent / "fixtures" / "golden"
 
@@ -302,7 +302,7 @@ def _validation_metrics(end_time: int, checkpoints: list[int]) -> dict:
 @pytest.mark.skipif(not INPUT_ZIP.exists(), reason=f"Input data not found: {INPUT_ZIP}")
 @pytest.mark.skipif(not GOLDEN_DIR.exists(), reason=f"Golden dir not found: {GOLDEN_DIR}")
 def test_checkpoint_metrics_independent_of_end_time():
-    """step=01 deve ser idêntico rodando 3 passos ou 20 passos."""
+    """step=01 must be identical whether running 3 steps or 19."""
     short = _validation_metrics(end_time=3,  checkpoints=[1])
     long_ = _validation_metrics(end_time=19, checkpoints=[1, 5, 10, 19])
 
@@ -310,12 +310,12 @@ def test_checkpoint_metrics_independent_of_end_time():
         a = short["1"][band]
         b = long_["1"][band]
         assert a["match_pct"] == pytest.approx(b["match_pct"], abs=1e-9), (
-            f"banda {band}: match de step=01 depende de end_time "
-            f"({a['match_pct']:.4f}% com 3 passos vs {b['match_pct']:.4f}% com 20) "
-            f"— o snapshot por checkpoint não está sendo usado"
+            f"band {band}: step=01 match depends on end_time "
+            f"({a['match_pct']:.4f}% with 3 steps vs {b['match_pct']:.4f}% with 19) "
+            f"— the per-checkpoint snapshot is not being used"
         )
         assert a["mae"] == pytest.approx(b["mae"], abs=1e-12), (
-            f"banda {band}: MAE de step=01 depende de end_time"
+            f"band {band}: step=01 MAE depends on end_time"
         )
 
 
