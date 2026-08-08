@@ -5,8 +5,8 @@ from .vector_executor import BrmangueVectorExecutor
 from .benchmark_executor import BrmangueBenchmarkExecutor
 from .validation_executor import ValidationExecutor
 
-# A variável mágica __all__ define exatamente o que é exportado
-# quando alguém faz `from brmangue.executor import *`
+# The __all__ magic variable defines exactly what gets exported
+# when someone does `from brmangue.executor import *`
 __all__ = [
     "BrmangueRasterExecutor",
     "BrmangueVectorExecutor",
