@@ -325,4 +325,12 @@ Original TerraME implementation: [LambdaGeo/brmangue-terrame](https://github.com
 
 ---
 
+## 🤝 Credits
+
+This port builds on the reference implementation and design ideas of
+**Felipe Martins Sousa** (UFMA), co-author of the BR-MANGUE application to the
+Baixada Maranhense (Bezerra et al., 2025, https://doi.org/10.5772/intechopen.1012210).
+
+---
+
 Developed by the **[LambdaGeo](https://lambdageo.github.io)** research group.

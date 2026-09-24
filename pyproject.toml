@@ -7,7 +7,10 @@ name = "brmangue-dissmodel"
 version = "0.3.0"
 description = "Implementation of the Bezerra et al. (2014) mangrove migration and coastal flood models on top of DisSModel."
 readme = "README.md"
-authors = [{ name = "Sergio Souza Costa", email = "sergio@ufma.br" }]
+authors = [
+    { name = "Sergio Souza Costa", email = "sergio@ufma.br" },
+    { name = "Felipe Martins Sousa" },
+]
 license = { text = "MIT" }
 dependencies = [
     "dissmodel>=0.4.0",
