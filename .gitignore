@@ -56,3 +56,6 @@ examples/data/**/profiling_*.md
 # OS
 .DS_Store
 Thumbs.db
+
+# example inputs are versioned
+!examples/data/input/*.zip

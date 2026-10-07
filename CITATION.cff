@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "brmangue-dissmodel: The BR-MANGUE coupled flood and mangrove succession model for DisSModel"
+authors:
+  - family-names: "Bezerra"
+    given-names: "Denilson da Silva"
+    orcid: "https://orcid.org/0000-0002-9567-7828"
+  - family-names: "Sousa"
+    given-names: "Felipe Martins"
+    orcid: "https://orcid.org/0009-0009-0505-4845"
+  - family-names: "Costa"
+    given-names: "Sérgio Souza"
+    orcid: "https://orcid.org/0000-0002-0232-4549"
+version: 0.3.0
+date-released: "2026-10-07"
+license: MIT
+url: "https://github.com/DisSModel/brmangue-dissmodel"
+repository-code: "https://github.com/DisSModel/brmangue-dissmodel"
+keywords:
+  - mangrove
+  - coastal flood
+  - sea-level rise
+  - spatial dynamic modeling
+  - DisSModel
+type: software

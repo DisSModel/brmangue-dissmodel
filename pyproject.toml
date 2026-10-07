@@ -5,10 +5,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "brmangue-dissmodel"
 version = "0.3.0"
-description = "Implementation of the Bezerra et al. (2014) mangrove migration and coastal flood models on top of DisSModel."
+description = "Implementation of the Bezerra et al. (2013) mangrove migration and coastal flood models on top of DisSModel."
 readme = "README.md"
 authors = [
-    { name = "Sergio Souza Costa", email = "sergio@ufma.br" },
+    { name = "Sérgio Souza Costa" },
+    { name = "Denilson da Silva Bezerra" },
     { name = "Felipe Martins Sousa" },
 ]
 license = { text = "MIT" }

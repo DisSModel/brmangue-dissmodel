@@ -168,6 +168,11 @@ python examples/main_benchmark.py run \
 #   report.md   — runtime (ms/step) and accuracy table
 ```
 
+On `synthetic_grid_60x60_shp.zip` with the parameters above (3,600 cells, 10 steps)
+the two substrates agree on every cell of `uso` and `solo`, and `alt` agrees with
+MAE 0.000959 and a maximum error of 0.024 m; `tests/test_synthetic_benchmark.py`
+checks this. The runtime columns depend on the machine.
+
 The runtime figures in `report.md` are what we use to compare the efficiency of
 the raster and vector substrates. They depend on the machine and the input, so
 we recommend running the benchmark on your own data rather than taking any
