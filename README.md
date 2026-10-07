@@ -170,7 +170,7 @@ python examples/main_benchmark.py run \
 
 On `synthetic_grid_60x60_shp.zip` with the parameters above (3,600 cells, 10 steps)
 the two substrates agree on every cell of `uso` and `solo`, and `alt` agrees with
-MAE 0.000959 and a maximum error of 0.024 m; `tests/test_synthetic_benchmark.py`
+MAE 0.0011 and a maximum error of 0.024 m; `tests/test_synthetic_benchmark.py`
 checks this. The runtime columns depend on the machine.
 
 The runtime figures in `report.md` are what we use to compare the efficiency of
@@ -271,16 +271,38 @@ With 20 golden files, the highest comparable simulation step is **19**.
 
 | Step | `uso` | `solo` | `alt` (1 mm tol) | `alt` MAE |
 |-----:|------:|-------:|-----------------:|----------:|
-| 1  | 100.0% | 100.0% | 99.8% | 0.00001 |
-| 5  | 100.0% | 100.0% | 99.0% | 0.00017 |
-| 10 | 100.0% | 100.0% | 98.2% | 0.00036 |
-| 19 | 100.0% | 100.0% | 97.3% | 0.00068 |
+| 1  | 100.0% | 100.0% | 100.0% | 0.00000 |
+| 5  | 100.0% | 100.0% | 99.6% | 0.00002 |
+| 10 | 100.0% | 100.0% | 98.6% | 0.00017 |
+| 19 | 100.0% | 100.0% | 97.4% | 0.00038 |
 
 In this scenario, the categorical bands (`uso`, `solo`) agree with TerraME cell
-for cell at every checkpoint (MAE and max error are both 0). Only `alt`
-diverges slightly, which we attribute to accumulated floating-point differences
-in the flux diffusion; the maximum absolute error after 19 steps is 0.24 m
-against elevations of 1–58 m.
+for cell at every checkpoint. Only `alt` diverges slightly (maximum absolute
+error 0.10 m after 19 steps, against elevations of 1–58 m). The residual is
+floating-point tie-breaking, not a rule difference: the flux rule compares
+accumulated elevations with `<=`, and ~57% of neighbour pairs hold *exactly*
+equal elevations, so a ~1e-16 difference in summation order (TerraME visits
+cells sequentially, NumPy adds neighbour contributions per direction) flips an
+occasional comparison. Fed the exact TerraME state (17 significant digits), the
+elevation rule reproduces the next TerraME step to 1e-14 at most steps.
+
+#### Flood scenario (`taxa_elevacao=0.5`, `FINAL_TIME=11`)
+
+Same dataset, with the laboratory parameters of `lab1.lua`, where flooding does
+occur (TerraME flood golden regenerated with TerraME 2.0.1; 2,469 flooded cells
+at step 11). Python vs TerraME:
+
+| Step | `uso` | `solo` | `alt` (1 mm tol) | `alt` MAE |
+|-----:|------:|-------:|-----------------:|----------:|
+| 1  | 100.0% | 100.0% | 100.0% | 0.00000 |
+| 3  | 100.0% | 100.0% | 98.8% | 0.00063 |
+| 5  | 100.0% | 100.0% | 97.8% | 0.00200 |
+| 10 | 100.0% | 100.0% | 94.9% | 0.00708 |
+
+`solo` is exact at every step and `uso` differs in <0.05% of cells (a few
+frontier cells whose flooding flips on the same elevation ties). Because the
+flooding threshold is discontinuous, the tie noise grows with the number of
+steps; this scenario should be read as "same dynamics, not bit-identical".
 
 #### Limitations and scenario coverage
 

@@ -365,7 +365,7 @@ def _build_raster(gdf: gpd.GeoDataFrame):
 
     for band in ("uso", "alt", "solo"):
         if band in gdf.columns:
-            arr = np.zeros((n_rows, n_cols), dtype=np.float32)
+            arr = np.zeros((n_rows, n_cols), dtype=np.float64)
             arr[rows, cols] = gdf[band].astype(float).values
             backend.set(band, arr)
 

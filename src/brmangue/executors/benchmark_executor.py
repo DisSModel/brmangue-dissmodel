@@ -291,7 +291,7 @@ def _build_mock_raster(
 
     for band in CANONICAL_COLS:
         if band in gdf.columns:
-            arr             = np.zeros((n_rows, n_cols), dtype=np.float32)
+            arr             = np.zeros((n_rows, n_cols), dtype=np.float64)
             arr[rows, cols] = gdf[band].astype(float).values
             backend.set(band, arr)
 

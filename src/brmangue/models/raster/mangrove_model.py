@@ -62,6 +62,13 @@ class MangroveModel(SyncRasterModel):
         self.mangrove_migrated = 0
         self.soil_migrated     = 0
 
+    def pre_execute(self) -> None:
+        # In a full run FloodModel (registered first) has already frozen the
+        # START-of-step snapshot; taking it here would capture the post-flood
+        # state. Only snapshot when running stand-alone (no snapshot yet).
+        if "uso_past" not in self.backend.arrays:
+            self.synchronize()
+
     def execute(self) -> None:
         nivel_mar  = self.env.now() * self.taxa_elevacao
         zi         = self.altura_mare + nivel_mar
@@ -81,7 +88,7 @@ class MangroveModel(SyncRasterModel):
 
         # ── soil migration ───────────────────────────────────────────────────
         eh_fonte_solo = np.isin(solo_past, self.SOIL_SOURCES) & mask
-        solo_novo     = solo_past.copy()
+        solo_novo     = self.backend.get("solo").copy()  # in place over current state
 
         for dr, dc in self.dirs:
             fonte_viz = self.shift(eh_fonte_solo.astype(np.int8), dr, dc) > 0
@@ -96,7 +103,7 @@ class MangroveModel(SyncRasterModel):
 
         # ── land-use migration — uses uso_past / solo_past (TerraME .past) ──
         eh_fonte_uso = np.isin(uso_past, self.USE_SOURCES) & mask
-        uso_novo     = uso_past.copy()
+        uso_novo     = self.backend.get("uso").copy()   # in place over current state (TerraME)
 
         for dr, dc in self.dirs:
             fonte_viz = self.shift(eh_fonte_uso.astype(np.int8), dr, dc) > 0
@@ -116,12 +123,13 @@ class MangroveModel(SyncRasterModel):
                 & ~np.isin(uso_past, USOS_INUNDADOS)
                 & mask
             )
-            alt_novo = np.where(cond_ac, alt_past + taxa_ac, alt_past)
+            alt_cur  = self.backend.get("alt")
+            alt_novo = np.where(cond_ac, alt_cur + taxa_ac, alt_cur)
             self.backend.arrays["alt"] = np.where(mask, alt_novo, alt_past)
 
         # final guard: cells outside mask always keep their original values
-        self.backend.arrays["uso"]  = np.where(mask, uso_novo,  uso_past)
-        self.backend.arrays["solo"] = np.where(mask, solo_novo, solo_past)
+        self.backend.arrays["uso"]  = np.where(mask, uso_novo,  self.backend.get("uso"))
+        self.backend.arrays["solo"] = np.where(mask, solo_novo, self.backend.get("solo"))
 
         # metrics — only count valid cells
         self.mangrove_migrated = int(np.sum((uso_novo  == MANGUE_MIGRADO)      & mask))
