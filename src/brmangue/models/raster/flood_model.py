@@ -20,11 +20,11 @@ class FloodModel(SyncRasterModel):
     """
     Hydrological model (hidro.lua) → DisSModel + RasterBackend.
 
-    Uses shared snapshot semantics (auto_sync=False): the ``StepSyncModel``
-    created in the executor freezes "uso" and "alt" in ``"uso_past"`` /
-    ``"alt_past"`` before this model and MangroveModel run, ensuring both
-    read the state at the beginning of the step — equivalent to TerraME's
-    ``cell.past[attr]``.
+    Shared snapshot semantics: this model (registered first) takes the
+    start-of-step snapshot in ``pre_execute`` and does NOT re-snapshot after
+    its own ``execute``; MangroveModel re-snapshots after the full step. Both
+    therefore read the state at the beginning of the step — equivalent to
+    TerraME's ``cell.past[attr]`` — while writing over the current state.
 
     Parameters
     ----------
@@ -38,13 +38,22 @@ class FloodModel(SyncRasterModel):
         taxa_elevacao: float = 0.011,
     ) -> None:
         super().setup(backend)
-        self.land_use_types    = ["uso", "alt"]
-
+        # FloodModel runs FIRST in each step and owns the start-of-step
+        # snapshot of every state array (TerraME: cs:synchronize() at the end
+        # of the previous step). MangroveModel reads the same snapshot.
+        self.land_use_types    = ["uso", "alt"] + (
+            ["solo"] if "solo" in backend.arrays else []
+        )
 
         self.taxa_elevacao     = taxa_elevacao
         self.flooded_cells     = 0
         self.newly_flooded     = 0
         self.current_sea_level = 0.0
+
+    def post_execute(self) -> None:
+        # No snapshot here: MangroveModel still has to read the START-of-step
+        # state. It re-synchronises all arrays once both models have run.
+        pass
 
     def execute(self) -> None:
         nivel_mar  = self.env.now() * self.taxa_elevacao
@@ -64,9 +73,16 @@ class FloodModel(SyncRasterModel):
         # source cells: already flooded or sea — only within valid area
         eh_fonte = np.isin(uso_past, USOS_INUNDADOS) & (alt_past >= 0) & mask
 
+        # Neighbour count must only include cells that exist in the cellular
+        # space (TerraME neighbourhoods never contain cells outside the polygon
+        # mask). Padding cells hold alt=0, so without ``& viz_mask`` they would
+        # count as "lower neighbours" and dilute the flux along the borders.
         viz_baixos = np.ones((rows, cols), dtype=float)
         for dr, dc in self.dirs:
-            viz_baixos += (self.shift(alt_past, dr, dc) <= alt_past).astype(float)
+            viz_mask = self.shift(mask.astype(float), dr, dc) > 0
+            viz_baixos += (
+                viz_mask & (self.shift(alt_past, dr, dc) <= alt_past)
+            ).astype(float)
 
         fluxo     = np.where(eh_fonte, self.taxa_elevacao / viz_baixos, 0.0)
         delta_alt = fluxo.copy()

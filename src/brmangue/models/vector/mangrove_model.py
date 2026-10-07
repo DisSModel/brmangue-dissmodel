@@ -63,10 +63,9 @@ class MangroveModel(SpatialModel):
     np.where(cond, new, current)     →  solo_novo[idx] = SOLO_MANGUE_MIGRADO
     solo_past (not solo_novo)        →  solo_past[idx] — same .past care
 
-    Snapshot semantics: the local copies taken at the start of execute()
-    read the same state the raster's ``_past`` arrays expose at this point
-    of the tick (each SyncRasterModel re-freezes ``_past`` in post_execute,
-    so each model reads its predecessor's output).
+    Snapshot semantics: FloodModel stores the START-of-step state in
+    ``gdf.attrs["brmangue_past"]``; this model reads it (TerraME's
+    ``cell.past``) and writes over the current state, like the raster pair.
 
     Parameters
     ----------
@@ -114,9 +113,16 @@ class MangroveModel(SpatialModel):
         taxa_ac   = self.COEF_A / 1000.0 + self.COEF_B * nivel_mar
 
         # snapshots — equivalent to cell.past[] in TerraME
-        uso_past  = self.gdf[self.attr_uso].copy()
-        alt_past  = self.gdf[self.attr_alt].copy()
-        solo_past = self.gdf[self.attr_solo].copy()
+        # Prefer the START-of-step snapshot frozen by FloodModel; fall back to
+        # the current state when running stand-alone. All writes below go over
+        # the CURRENT state (in place, as in TerraME), not over the snapshot.
+        shared = self.gdf.attrs.pop("brmangue_past", None)
+        if shared is not None and shared["solo"] is not None:
+            uso_past, alt_past, solo_past = shared["uso"], shared["alt"], shared["solo"]
+        else:
+            uso_past  = self.gdf[self.attr_uso].copy()
+            alt_past  = self.gdf[self.attr_alt].copy()
+            solo_past = self.gdf[self.attr_solo].copy()
 
         # ── migrateSoils ─────────────────────────────────────────────────────
         # Source: cell.past[soil] in SOIL_SOURCES
@@ -126,7 +132,7 @@ class MangroveModel(SpatialModel):
         fontes_solo = set(
             solo_past.index[solo_past.isin(self.SOIL_SOURCES)]
         )
-        solo_novo = solo_past.copy()
+        solo_novo = self.gdf[self.attr_solo].copy()
 
         for idx in self.gdf.index:
             if uso_past[idx] not in self.USE_TARGETS:
@@ -146,7 +152,7 @@ class MangroveModel(SpatialModel):
         fontes_uso = set(
             uso_past.index[uso_past.isin(self.USE_SOURCES)]
         )
-        uso_novo = uso_past.copy()
+        uso_novo = self.gdf[self.attr_uso].copy()
 
         for idx in self.gdf.index:
             if uso_past[idx] not in self.USE_TARGETS:
@@ -160,7 +166,7 @@ class MangroveModel(SpatialModel):
 
         # ── applyAccretion (disabled by default — commented in original Lua) ─
         if self.acrecao_ativa:
-            alt_nova = alt_past.copy()
+            alt_nova = self.gdf[self.attr_alt].copy()
             for idx in self.gdf.index:
                 if solo_past[idx] in self.MANGROVE_SOILS:
                     if uso_past[idx] not in USOS_INUNDADOS:

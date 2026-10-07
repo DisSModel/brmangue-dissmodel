@@ -383,3 +383,28 @@ def test_flood_model_floods_with_laboratory_parameters():
         "FloodModel flooded no cells even at the laboratory sea-level rate "
         "(taxa_elevacao=0.5, 11 steps). The flood component is not firing."
     )
+
+
+def test_flood_flux_counts_only_real_neighbours():
+    """A corner sea cell has 3 real neighbours, so flux = taxa / (1 + 3).
+
+    Regression: padding cells (alt=0) used to count as "lower neighbours",
+    diluting the flux along grid/polygon borders (TerraME only has real ones).
+    """
+    import numpy as np
+    from dissmodel.core import Environment
+    from dissmodel.geo.raster.backend import RasterBackend
+    from brmangue.models.raster.flood_model import FloodModel
+
+    b = RasterBackend(shape=(3, 3))
+    uso = np.full((3, 3), 2, dtype=np.int16)
+    uso[0, 0] = 3                                  # sea in the corner
+    b.set("uso", uso)
+    b.set("alt", np.full((3, 3), 5.0))
+    b.set("mask", np.ones((3, 3), dtype=bool))
+    env = Environment(start_time=1, end_time=1)
+    FloodModel(backend=b, taxa_elevacao=0.4)
+    env.run()
+    alt = b.get("alt")
+    assert abs(alt[0, 0] - (5.0 + 0.4 / 4)) < 1e-9
+    assert abs(alt[0, 1] - (5.0 + 0.4 / 4)) < 1e-9

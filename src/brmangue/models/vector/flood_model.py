@@ -45,12 +45,6 @@ from brmangue.common.constants import (
     MAR,
 )
 
-# The raster substrate always evaluates the full Moore window (8 positions):
-# shift2d zero-fills off-grid/off-mask positions, so a missing neighbor
-# behaves as a phantom cell with alt = 0. The vector model reproduces this.
-MOORE_SIZE = 8
-
-
 @track_plot("flooded_cells", "blue")
 class FloodModel(SpatialModel):
     """
@@ -60,10 +54,9 @@ class FloodModel(SpatialModel):
     -----------------------------------
     RasterBackend.shift2d()          →  neighs_id(idx) / neighbor_values()
     np.isin(uso, USOS_INUNDADOS)     →  uso_past.isin(USOS_INUNDADOS)
-    loop over DIRS_MOORE             →  loop over real GDF neighbors, plus
-                                        phantom alt=0 neighbors for the
-                                        (8 - len(neighbors)) missing Moore
-                                        positions (shift2d zero-fill)
+    loop over DIRS_MOORE             →  loop over real GDF neighbors only
+                                        (off-grid / off-mask positions are
+                                        not neighbors, as in TerraME)
     vectorized over full grid        →  cell-by-cell loop (slower,
                                         but faithful to real geometry)
 
@@ -102,9 +95,15 @@ class FloodModel(SpatialModel):
     def execute(self) -> None:
         nivel_mar = self.env.now() * self.taxa_elevacao
 
-        # Snapshots — equivalent to cell.past[] in TerraME
+        # Snapshots — equivalent to cell.past[] in TerraME. FloodModel runs
+        # first in the step, so these are the START-of-step values; they are
+        # shared with MangroveModel (TerraME: one cs:synchronize() per step).
         uso_past = self.gdf[self.attr_uso].copy()
         alt_past = self.gdf[self.attr_alt].copy()
+        self.gdf.attrs["brmangue_past"] = {
+            "uso": uso_past, "alt": alt_past,
+            "solo": self.gdf["solo"].copy() if "solo" in self.gdf else None,
+        }
 
         # ── sources: isSeaOrFlooded(uso) and alt >= 0 ─────────────────────────
         fontes = set(
@@ -124,11 +123,6 @@ class FloodModel(SpatialModel):
             viz_baixos = 1 + sum(
                 1 for n in vizinhos if alt_past[n] <= alt_atual
             )
-            # phantom neighbors: the raster zero-fills missing Moore positions,
-            # and a phantom alt of 0 counts as "low" whenever 0 <= alt(source)
-            if alt_atual >= 0:
-                viz_baixos += max(0, MOORE_SIZE - len(vizinhos))
-
             fluxo = self.taxa_elevacao / viz_baixos
 
             alt_nova[idx] += fluxo
