@@ -146,7 +146,8 @@ class BrmangueVectorExecutor(ModelExecutor):
         record.add_log(f"Running steps 1 → {end_time}...")
         env.run()
         record.add_log("Simulation complete")
-        return gdf
+        # drop the <col>_past snapshot columns (internal to SyncSpatialModel)
+        return gdf.drop(columns=[c for c in gdf.columns if c.endswith("_past")])
 
     def save(self, result: gpd.GeoDataFrame, record: ExperimentRecord) -> ExperimentRecord:
         from brmangue.common.utils import default_output_uri
