@@ -3,7 +3,7 @@ mangrove_model.py — Mangrove Model (GeoDataFrame version)
 =========================================================
 
 Vector-based version of the canonical raster MangroveModel
-(brmangue.models.raster.mangrove_model) using GeoDataFrame + SpatialModel.
+(brmangue.models.raster.mangrove_model) using GeoDataFrame + SyncSpatialModel.
 
 Same logic, different substrate:
 
@@ -36,7 +36,7 @@ from __future__ import annotations
 import geopandas as gpd
 from libpysal.weights import Queen
 
-from dissmodel.geo import SpatialModel
+from dissmodel.geo.vector.sync_model import SyncSpatialModel
 from dissmodel.visualization import track_plot
 
 from brmangue.common.constants import (
@@ -52,7 +52,7 @@ from brmangue.common.constants import (
 
 
 @track_plot("mangrove_migrated", "green")
-class MangroveModel(SpatialModel):
+class MangroveModel(SyncSpatialModel):
     """
     Mangrove model implemented with DisSModel + GeoDataFrame.
 
@@ -63,9 +63,10 @@ class MangroveModel(SpatialModel):
     np.where(cond, new, current)     →  solo_novo[idx] = SOLO_MANGUE_MIGRADO
     solo_past (not solo_novo)        →  solo_past[idx] — same .past care
 
-    Snapshot semantics: FloodModel stores the START-of-step state in
-    ``gdf.attrs["brmangue_past"]``; this model reads it (TerraME's
-    ``cell.past``) and writes over the current state, like the raster pair.
+    Snapshot semantics (``SyncSpatialModel``): FloodModel, registered first,
+    freezes the START-of-step state in ``<col>_past``; this model reads it
+    (TerraME ``cell.past``), writes over the current state, and
+    re-synchronises after the step, like the raster pair.
 
     Parameters
     ----------
@@ -101,28 +102,32 @@ class MangroveModel(SpatialModel):
         self.attr_alt      = attr_alt
         self.attr_solo     = attr_solo
 
+        # columns frozen as <col>_past (the first model to run owns the snapshot)
+        self.land_use_types = [attr_uso, attr_alt, attr_solo]
+
         # metrics exposed for @track_plot / Chart — names match the raster model
         self.mangrove_migrated = 0
         self.soil_migrated     = 0
 
         self.create_neighborhood(strategy=Queen, silence_warnings=True)
 
+    def pre_execute(self) -> None:
+        # In a full run FloodModel (registered first) has already frozen the
+        # START-of-step snapshot; taking it here would capture the post-flood
+        # state. Only snapshot when running stand-alone (no snapshot yet).
+        if self.attr_uso + "_past" not in self.gdf.columns:
+            self.synchronize()
+
     def execute(self) -> None:
         nivel_mar = self.env.now() * self.taxa_elevacao
         zi        = self.altura_mare + nivel_mar
         taxa_ac   = self.COEF_A / 1000.0 + self.COEF_B * nivel_mar
 
-        # snapshots — equivalent to cell.past[] in TerraME
-        # Prefer the START-of-step snapshot frozen by FloodModel; fall back to
-        # the current state when running stand-alone. All writes below go over
-        # the CURRENT state (in place, as in TerraME), not over the snapshot.
-        shared = self.gdf.attrs.pop("brmangue_past", None)
-        if shared is not None and shared["solo"] is not None:
-            uso_past, alt_past, solo_past = shared["uso"], shared["alt"], shared["solo"]
-        else:
-            uso_past  = self.gdf[self.attr_uso].copy()
-            alt_past  = self.gdf[self.attr_alt].copy()
-            solo_past = self.gdf[self.attr_solo].copy()
+        # START-of-step state (TerraME cell.past), frozen by SyncSpatialModel.
+        # All writes below go over the CURRENT state (in place, as in TerraME).
+        uso_past  = self.gdf[self.attr_uso  + "_past"]
+        alt_past  = self.gdf[self.attr_alt  + "_past"]
+        solo_past = self.gdf[self.attr_solo + "_past"]
 
         # ── migrateSoils ─────────────────────────────────────────────────────
         # Source: cell.past[soil] in SOIL_SOURCES

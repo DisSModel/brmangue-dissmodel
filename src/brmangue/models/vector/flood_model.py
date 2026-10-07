@@ -3,7 +3,7 @@ flood_model.py — Hydrological Model (GeoDataFrame version)
 ==========================================================
 
 Vector-based version of the canonical raster FloodModel
-(brmangue.models.raster.flood_model) using GeoDataFrame + SpatialModel.
+(brmangue.models.raster.flood_model) using GeoDataFrame + SyncSpatialModel.
 
 Same logic, different substrate:
 
@@ -36,7 +36,7 @@ from __future__ import annotations
 import geopandas as gpd
 from libpysal.weights import Queen
 
-from dissmodel.geo import SpatialModel
+from dissmodel.geo.vector.sync_model import SyncSpatialModel
 from dissmodel.visualization import track_plot
 
 from brmangue.common.constants import (
@@ -46,7 +46,7 @@ from brmangue.common.constants import (
 )
 
 @track_plot("flooded_cells", "blue")
-class FloodModel(SpatialModel):
+class FloodModel(SyncSpatialModel):
     """
     Hydrological model implemented with DisSModel + GeoDataFrame.
 
@@ -60,10 +60,12 @@ class FloodModel(SpatialModel):
     vectorized over full grid        →  cell-by-cell loop (slower,
                                         but faithful to real geometry)
 
-    Snapshot semantics: the local copies taken at the start of execute()
-    read the same state the raster's ``_past`` arrays expose at this point
-    of the tick (each SyncRasterModel re-freezes ``_past`` in post_execute,
-    so each model reads its predecessor's output).
+    Snapshot semantics (``SyncSpatialModel``, the vector twin of the raster
+    ``SyncRasterModel``): this model runs FIRST in each step and owns the
+    start-of-step snapshot of every state column (``<col>_past``; TerraME:
+    ``cs:synchronize()`` at the end of the previous step). It does not
+    re-snapshot after its own ``execute``; MangroveModel reads the same
+    snapshot and re-synchronises once both models have run.
 
     Parameters
     ----------
@@ -83,6 +85,11 @@ class FloodModel(SpatialModel):
         self.attr_uso      = attr_uso
         self.attr_alt      = attr_alt
 
+        # columns frozen as <col>_past at the start of every step
+        self.land_use_types = [attr_uso, attr_alt] + (
+            ["solo"] if "solo" in self.gdf.columns else []
+        )
+
         # metrics exposed for @track_plot / Chart — names match the raster model
         self.flooded_cells     = 0
         self.newly_flooded     = 0
@@ -92,18 +99,17 @@ class FloodModel(SpatialModel):
         # silence_warnings suppresses island warnings (cells without neighbors)
         self.create_neighborhood(strategy=Queen, silence_warnings=True)
 
+    def post_execute(self) -> None:
+        # No snapshot here: MangroveModel still has to read the START-of-step
+        # state. It re-synchronises all columns once both models have run.
+        pass
+
     def execute(self) -> None:
         nivel_mar = self.env.now() * self.taxa_elevacao
 
-        # Snapshots — equivalent to cell.past[] in TerraME. FloodModel runs
-        # first in the step, so these are the START-of-step values; they are
-        # shared with MangroveModel (TerraME: one cs:synchronize() per step).
-        uso_past = self.gdf[self.attr_uso].copy()
-        alt_past = self.gdf[self.attr_alt].copy()
-        self.gdf.attrs["brmangue_past"] = {
-            "uso": uso_past, "alt": alt_past,
-            "solo": self.gdf["solo"].copy() if "solo" in self.gdf else None,
-        }
+        # START-of-step state (TerraME cell.past), frozen by SyncSpatialModel
+        uso_past = self.gdf[self.attr_uso + "_past"]
+        alt_past = self.gdf[self.attr_alt + "_past"]
 
         # ── sources: isSeaOrFlooded(uso) and alt >= 0 ─────────────────────────
         fontes = set(
