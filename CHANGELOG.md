@@ -25,6 +25,11 @@
     file to English in a copy: the tests and outputs are unchanged).
   - Unchanged: band/column names (`uso`, `solo`, `alt`), class codes, golden files.
 
+### Fixed
+- `pyproject.toml` required `dissmodel>=0.4.0`, but the models need the
+  `SyncRasterModel`/`SyncSpatialModel` API of dissmodel 0.6 (12 of the 32 tests
+  fail on 0.5.x); the requirement is now `dissmodel>=0.6.0`.
+
 ### Added
 - Flooding scenario validated against TerraME: golden files in
   `tests/fixtures/golden_flood/` and `tests/test_flood_validation.py`.
