@@ -28,7 +28,7 @@ Usage
 
     gdf = gpd.read_file("flood_model.shp")
     env = Environment(start_time=1, end_time=88)
-    FloodModel(gdf=gdf, taxa_elevacao=0.011)
+    FloodModel(gdf=gdf, sea_level_rise_rate=0.011)
     env.run()
 """
 from __future__ import annotations
@@ -40,10 +40,11 @@ from dissmodel.geo.vector.sync_model import SyncSpatialModel
 from dissmodel.visualization import track_plot
 
 from brmangue.common.constants import (
-    USOS_INUNDADOS,
-    REGRAS_INUNDACAO,
-    MAR,
+    FLOODED_USES,
+    FLOODING_RULES,
+    SEA,
 )
+from brmangue.common.constants import ALTITUDE, LAND_USE, SOIL, past
 
 @track_plot("flooded_cells", "blue")
 class FloodModel(SyncSpatialModel):
@@ -53,7 +54,7 @@ class FloodModel(SyncSpatialModel):
     Equivalence with the raster version
     -----------------------------------
     RasterBackend.shift2d()          →  neighs_id(idx) / neighbor_values()
-    np.isin(uso, USOS_INUNDADOS)     →  uso_past.isin(USOS_INUNDADOS)
+    np.isin(land_use, FLOODED_USES) →  land_use_past.isin(FLOODED_USES)
     loop over DIRS_MOORE             →  loop over real GDF neighbors only
                                         (off-grid / off-mask positions are
                                         not neighbors, as in TerraME)
@@ -69,25 +70,25 @@ class FloodModel(SyncSpatialModel):
 
     Parameters
     ----------
-    gdf           : GeoDataFrame with columns attr_uso and attr_alt
-    taxa_elevacao : meters/year — IPCC RCP8.5 ≈ 0.011
-    attr_uso      : land-use column. Default: "uso"
-    attr_alt      : elevation column. Default: "alt"
+    gdf           : GeoDataFrame with columns land_use_attr and altitude_attr
+    sea_level_rise_rate : meters/year — IPCC RCP8.5 ≈ 0.011
+    land_use_attr      : land-use column. Default: LAND_USE
+    altitude_attr      : elevation column. Default: ALTITUDE
     """
 
     def setup(
         self,
-        taxa_elevacao: float = 0.011,
-        attr_uso:      str   = "uso",
-        attr_alt:      str   = "alt",
+        sea_level_rise_rate: float = 0.011,
+        land_use_attr:      str   = LAND_USE,
+        altitude_attr:      str   = ALTITUDE,
     ) -> None:
-        self.taxa_elevacao = taxa_elevacao
-        self.attr_uso      = attr_uso
-        self.attr_alt      = attr_alt
+        self.sea_level_rise_rate = sea_level_rise_rate
+        self.land_use_attr      = land_use_attr
+        self.altitude_attr      = altitude_attr
 
         # columns frozen as <col>_past at the start of every step
-        self.land_use_types = [attr_uso, attr_alt] + (
-            ["solo"] if "solo" in self.gdf.columns else []
+        self.land_use_types = [land_use_attr, altitude_attr] + (
+            [SOIL] if SOIL in self.gdf.columns else []
         )
 
         # metrics exposed for @track_plot / Chart — names match the raster model
@@ -105,60 +106,60 @@ class FloodModel(SyncSpatialModel):
         pass
 
     def execute(self) -> None:
-        nivel_mar = self.env.now() * self.taxa_elevacao
+        sea_level = self.env.now() * self.sea_level_rise_rate
 
         # START-of-step state (TerraME cell.past), frozen by SyncSpatialModel
-        uso_past = self.gdf[self.attr_uso + "_past"]
-        alt_past = self.gdf[self.attr_alt + "_past"]
+        land_use_past = self.gdf[past(self.land_use_attr)]
+        alt_past = self.gdf[past(self.altitude_attr)]
 
-        # ── sources: isSeaOrFlooded(uso) and alt >= 0 ─────────────────────────
-        fontes = set(
-            uso_past.index[
-                uso_past.isin(USOS_INUNDADOS) & (alt_past >= 0)
+        # ── sources: isSeaOrFlooded(land use) and alt >= 0 ─────────────────────────
+        sources = set(
+            land_use_past.index[
+                land_use_past.isin(FLOODED_USES) & (alt_past >= 0)
             ]
         )
 
         # ── A. Elevation — flow diffusion (relative condition) ────────────────
         # Lua: if neighbor.past[alt] <= currentAlt: neigh[alt] += flow
-        alt_nova = alt_past.copy()
+        alt_new = alt_past.copy()
 
-        for idx in fontes:
-            alt_atual = alt_past[idx]
-            vizinhos  = self.neighs_id(idx)
+        for idx in sources:
+            alt_current = alt_past[idx]
+            neighbors  = self.neighs_id(idx)
 
-            viz_baixos = 1 + sum(
-                1 for n in vizinhos if alt_past[n] <= alt_atual
+            lower_neighbors = 1 + sum(
+                1 for n in neighbors if alt_past[n] <= alt_current
             )
-            fluxo = self.taxa_elevacao / viz_baixos
+            flux = self.sea_level_rise_rate / lower_neighbors
 
-            alt_nova[idx] += fluxo
-            for n in vizinhos:
-                if alt_past[n] <= alt_atual:
-                    alt_nova[n] += fluxo
+            alt_new[idx] += flux
+            for n in neighbors:
+                if alt_past[n] <= alt_current:
+                    alt_new[n] += flux
 
-        self.gdf[self.attr_alt] = alt_nova
+        self.gdf[self.altitude_attr] = alt_new
 
         # ── B. Flooding — absolute elevation threshold ───────────────────────
         # Lua: if neighbor.past[alt] <= seaLevel and not isSeaOrFlooded(neigh):
         #          applyFlooding(neighbor)
         # Uses alt_past — faithful to TerraME .past semantics
-        uso_novo = uso_past.copy()
+        land_use_new = land_use_past.copy()
 
         for idx in self.gdf.index:
-            uso_atual = uso_past[idx]
-            if uso_atual not in REGRAS_INUNDACAO:
+            land_use_current = land_use_past[idx]
+            if land_use_current not in FLOODING_RULES:
                 continue
-            if alt_past[idx] > nivel_mar:
+            if alt_past[idx] > sea_level:
                 continue
-            if any(n in fontes for n in self.neighs_id(idx)):
-                uso_novo[idx] = REGRAS_INUNDACAO[uso_atual]
+            if any(n in sources for n in self.neighs_id(idx)):
+                land_use_new[idx] = FLOODING_RULES[land_use_current]
 
-        self.gdf[self.attr_uso] = uso_novo
+        self.gdf[self.land_use_attr] = land_use_new
 
         # ── metrics ──────────────────────────────────────────────────────────
-        inund = uso_novo.isin(USOS_INUNDADOS) & (uso_novo != MAR)
-        novas = uso_novo.isin(USOS_INUNDADOS) & ~uso_past.isin(USOS_INUNDADOS)
+        flooded = land_use_new.isin(FLOODED_USES) & (land_use_new != SEA)
+        newly = land_use_new.isin(FLOODED_USES) & ~land_use_past.isin(FLOODED_USES)
 
-        self.flooded_cells     = int(inund.sum())
-        self.newly_flooded     = int(novas.sum())
-        self.current_sea_level = round(nivel_mar, 4)
+        self.flooded_cells     = int(flooded.sum())
+        self.newly_flooded     = int(newly.sum())
+        self.current_sea_level = round(sea_level, 4)

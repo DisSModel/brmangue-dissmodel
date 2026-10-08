@@ -1,7 +1,7 @@
 """
-flood_raster_model.py — Hydrological Model for DisSModel
+flood_model.py (raster) — Hydrological Model for DisSModel
 ========================================================
-Faithful translation of hidro.lua to DisSModel + RasterBackend.
+Faithful translation of models/flood.lua (brmangue-terrame; hidro.lua before the English renaming) to DisSModel + RasterBackend.
 """
 from __future__ import annotations
 
@@ -10,15 +10,16 @@ from dissmodel.geo.raster.backend import RasterBackend
 from dissmodel.geo.raster.sync_model import SyncRasterModel
 
 from brmangue.common.constants import (
-    USOS_INUNDADOS,
-    REGRAS_INUNDACAO,
-    MAR,
+    FLOODED_USES,
+    FLOODING_RULES,
+    SEA,
 )
+from brmangue.common.constants import ALTITUDE, LAND_USE, SOIL, past
 
 
 class FloodModel(SyncRasterModel):
     """
-    Hydrological model (hidro.lua) → DisSModel + RasterBackend.
+    Hydrological model (brmangue-terrame models/flood.lua) → DisSModel + RasterBackend.
 
     Shared snapshot semantics: this model (registered first) takes the
     start-of-step snapshot in ``pre_execute`` and does NOT re-snapshot after
@@ -28,24 +29,24 @@ class FloodModel(SyncRasterModel):
 
     Parameters
     ----------
-    backend       : RasterBackend containing arrays "uso" and "alt"
-    taxa_elevacao : meters/year — IPCC RCP8.5 ≈ 0.011
+    backend       : RasterBackend containing the LAND_USE and ALTITUDE arrays
+    sea_level_rise_rate : meters/year — IPCC RCP8.5 ≈ 0.011
     """
 
     def setup(
         self,
         backend:       RasterBackend,
-        taxa_elevacao: float = 0.011,
+        sea_level_rise_rate: float = 0.011,
     ) -> None:
         super().setup(backend)
         # FloodModel runs FIRST in each step and owns the start-of-step
         # snapshot of every state array (TerraME: cs:synchronize() at the end
         # of the previous step). MangroveModel reads the same snapshot.
-        self.land_use_types    = ["uso", "alt"] + (
-            ["solo"] if "solo" in backend.arrays else []
+        self.land_use_types    = [LAND_USE, ALTITUDE] + (
+            [SOIL] if SOIL in backend.arrays else []
         )
 
-        self.taxa_elevacao     = taxa_elevacao
+        self.sea_level_rise_rate     = sea_level_rise_rate
         self.flooded_cells     = 0
         self.newly_flooded     = 0
         self.current_sea_level = 0.0
@@ -56,7 +57,7 @@ class FloodModel(SyncRasterModel):
         pass
 
     def execute(self) -> None:
-        nivel_mar  = self.env.now() * self.taxa_elevacao
+        sea_level  = self.env.now() * self.sea_level_rise_rate
         rows, cols = self.shape
 
         # mask: True = valid cell (covered by a polygon)
@@ -66,61 +67,61 @@ class FloodModel(SyncRasterModel):
         ).astype(bool)
 
         # read shared snapshot frozen by StepSyncModel at step start
-        # equivalent to TerraME's cell.past["uso"] / cell.past["alt"]
-        uso_past = self.backend.get("uso_past")
-        alt_past = self.backend.get("alt_past")
+        # equivalent to TerraME's cell.past[land use] / cell.past[altitude]
+        land_use_past = self.backend.get(past(LAND_USE))
+        alt_past = self.backend.get(past(ALTITUDE))
 
         # source cells: already flooded or sea — only within valid area
-        eh_fonte = np.isin(uso_past, USOS_INUNDADOS) & (alt_past >= 0) & mask
+        is_source = np.isin(land_use_past, FLOODED_USES) & (alt_past >= 0) & mask
 
         # Neighbour count must only include cells that exist in the cellular
         # space (TerraME neighbourhoods never contain cells outside the polygon
-        # mask). Padding cells hold alt=0, so without ``& viz_mask`` they would
+        # mask). Padding cells hold alt=0, so without ``& neighbor_mask`` they would
         # count as "lower neighbours" and dilute the flux along the borders.
-        viz_baixos = np.ones((rows, cols), dtype=float)
+        lower_neighbors = np.ones((rows, cols), dtype=float)
         for dr, dc in self.dirs:
-            viz_mask = self.shift(mask.astype(float), dr, dc) > 0
-            viz_baixos += (
-                viz_mask & (self.shift(alt_past, dr, dc) <= alt_past)
+            neighbor_mask = self.shift(mask.astype(float), dr, dc) > 0
+            lower_neighbors += (
+                neighbor_mask & (self.shift(alt_past, dr, dc) <= alt_past)
             ).astype(float)
 
-        fluxo     = np.where(eh_fonte, self.taxa_elevacao / viz_baixos, 0.0)
-        delta_alt = fluxo.copy()
-        uso_novo  = uso_past.copy()
+        flux     = np.where(is_source, self.sea_level_rise_rate / lower_neighbors, 0.0)
+        delta_alt = flux.copy()
+        land_use_new  = land_use_past.copy()
 
         for dr, dc in self.dirs:
-            fonte_viz = self.shift(eh_fonte.astype(float), dr, dc) > 0
-            alt_viz   = self.shift(alt_past, dr, dc)
-            fluxo_viz = self.shift(fluxo, dr, dc)
+            source_neighbor = self.shift(is_source.astype(float), dr, dc) > 0
+            alt_neighbor   = self.shift(alt_past, dr, dc)
+            neighbor_flux = self.shift(flux, dr, dc)
 
             # 1. elevation update — relative condition
             delta_alt += np.where(
-                fonte_viz & (alt_past <= alt_viz), fluxo_viz, 0.0
+                source_neighbor & (alt_past <= alt_neighbor), neighbor_flux, 0.0
             )
 
             # 2. flooding — absolute elevation threshold
-            for uso_seco, uso_inund in REGRAS_INUNDACAO.items():
-                pode = (
-                    fonte_viz
-                    & (uso_past == uso_seco)
-                    & (alt_past <= nivel_mar)
+            for dry_use, flooded_use in FLOODING_RULES.items():
+                can_flood = (
+                    source_neighbor
+                    & (land_use_past == dry_use)
+                    & (alt_past <= sea_level)
                     & mask          # never flood outside valid area
                 )
-                uso_novo = np.where(pode, uso_inund, uso_novo)
+                land_use_new = np.where(can_flood, flooded_use, land_use_new)
 
         # final guard: cells outside mask always keep their original values
-        alt_novo = alt_past + delta_alt
-        self.backend.arrays["alt"] = np.where(mask, alt_novo, alt_past)
-        self.backend.arrays["uso"] = np.where(mask, uso_novo, uso_past)
+        alt_new = alt_past + delta_alt
+        self.backend.arrays[ALTITUDE] = np.where(mask, alt_new, alt_past)
+        self.backend.arrays[LAND_USE] = np.where(mask, land_use_new, land_use_past)
 
         # metrics
-        inund = np.isin(uso_novo, USOS_INUNDADOS) & (uso_novo != MAR) & mask
-        novas = (
-            np.isin(uso_novo, USOS_INUNDADOS)
-            & ~np.isin(uso_past, USOS_INUNDADOS)
+        flooded = np.isin(land_use_new, FLOODED_USES) & (land_use_new != SEA) & mask
+        newly = (
+            np.isin(land_use_new, FLOODED_USES)
+            & ~np.isin(land_use_past, FLOODED_USES)
             & mask
         )
 
-        self.flooded_cells     = int(np.sum(inund))
-        self.newly_flooded     = int(np.sum(novas))
-        self.current_sea_level = round(nivel_mar, 4)
+        self.flooded_cells     = int(np.sum(flooded))
+        self.newly_flooded     = int(np.sum(newly))
+        self.current_sea_level = round(sea_level, 4)

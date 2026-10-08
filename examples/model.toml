@@ -2,9 +2,9 @@
 
 [model.parameters]
 end_time      = 20
-taxa_elevacao = 0.5
-altura_mare   = 6.0
-acrecao_ativa = false
+sea_level_rise_rate = 0.5
+tide_height         = 6.0
+accretion_enabled   = false
 resolution    = 100.0
 crs           = "EPSG:31984"
 bands         = ["uso"]

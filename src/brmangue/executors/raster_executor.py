@@ -5,36 +5,38 @@ from dissmodel.executor.cli import run_cli
 from dissmodel.io           import load_dataset, save_dataset
 
 from brmangue.common.constants import (
-    MAR, TIFF_BANDS, CRS,
-    USO_COLORS, USO_LABELS,
-    SOLO_COLORS, SOLO_LABELS,
-    SOLO_LEITO_RIO, 
+    SEA, TIFF_BANDS, CRS,
+    USE_COLORS, USE_LABELS,
+    SOIL_COLORS, SOIL_LABELS,
+    SOIL_RIVERBED, 
 )
 from brmangue.models.raster.flood_model    import FloodModel
 from brmangue.models.raster.mangrove_model import MangroveModel
+from brmangue.common.utils import reject_renamed_parameters
+from brmangue.common.constants import ALTITUDE, LAND_USE, SOIL
 
 # ── visualization config ──────────────────────────────────────────────────────
 
 BAND_CONFIG: dict[str, dict] = {
-    "uso":  dict(color_map=USO_COLORS, labels=USO_LABELS, title="Land Use"),
-    "solo": dict(color_map=SOLO_COLORS, labels=SOLO_LABELS, title="Soil"),
-    "alt":  dict(
+    LAND_USE:  dict(color_map=USE_COLORS, labels=USE_LABELS, title="Land Use"),
+    SOIL: dict(color_map=SOIL_COLORS, labels=SOIL_LABELS, title="Soil"),
+    ALTITUDE:  dict(
         cmap           = "terrain",
         colorbar_label = "Elevation (m)",
-        mask_band      = "uso",
-        mask_value     = MAR,
+        mask_band      = LAND_USE,
+        mask_value     = SEA,
         title          = "Elevation",
     ),
 }
 
 SHAPEFILE_DEFAULTS: dict[str, int | float] = {
-    "uso":  5,
-    "alt":  0.0,
-    "solo": SOLO_LEITO_RIO,     
+    LAND_USE:  5,
+    ALTITUDE:  0.0,
+    SOIL: SOIL_RIVERBED,     
 }
 
 # Canonical band names this executor always expects after load()
-CANONICAL_BANDS = {"uso", "alt", "solo"}
+CANONICAL_BANDS = {LAND_USE, ALTITUDE, SOIL}
 
 
 class BrmangueRasterExecutor(ModelExecutor):
@@ -48,7 +50,8 @@ class BrmangueRasterExecutor(ModelExecutor):
     Input contract
     --------------
     After load(), the RasterBackend always exposes the canonical band names
-    "uso", "alt", "solo" — regardless of the source file's naming convention.
+    LAND_USE / ALTITUDE / SOIL (brmangue.common.constants) — regardless of the source
+    file's naming convention.
     Non-canonical names are resolved via band_map (tiff) or column_map (vector)
     before any model sees the data.
     """
@@ -76,7 +79,7 @@ class BrmangueRasterExecutor(ModelExecutor):
         Load RasterBackend from GeoTIFF or rasterize a vector file.
 
         Returns (backend, meta, start_time). Band names in the returned backend
-        are always canonical ("uso", "alt", "solo").
+        are always canonical (LAND_USE / ALTITUDE / SOIL).
         """
         from dissmodel.io.convert import vector_to_raster_backend
 
@@ -97,7 +100,7 @@ class BrmangueRasterExecutor(ModelExecutor):
                 backend.rename_band(real, canonical)
 
             tags  = meta.get("tags", {})
-            start = int(tags.get("passo", 0)) + 1
+            start = int(tags.get("passo", 0)) + 1   # "passo" (step): tag name in existing GeoTIFFs
             record.add_log(
                 f"Loaded GeoTIFF: shape={backend.shape} "
                 f"start={start} crs={meta.get('crs')}"
@@ -140,6 +143,8 @@ class BrmangueRasterExecutor(ModelExecutor):
         Band-level checks (missing bands, elevation range) run at the start
         of run() after a single load(), where the cost is already paid.
         """
+        reject_renamed_parameters(record.parameters)
+
         uri = record.source.uri
         if not uri:
             raise ValueError("source.uri is empty — pass 'input_dataset' in the request.")
@@ -179,10 +184,10 @@ class BrmangueRasterExecutor(ModelExecutor):
 
         params        = record.parameters
         end_time      = params.get("end_time",      88)
-        taxa_elevacao = params.get("taxa_elevacao",  0.5)
-        altura_mare   = params.get("altura_mare",    6.0)
-        acrecao_ativa = params.get("acrecao_ativa",  False)
-        bands         = params.get("bands",          ["uso"])
+        sea_level_rise_rate = params.get("sea_level_rise_rate",  0.5)
+        tide_height   = params.get("tide_height",    6.0)
+        accretion_enabled = params.get("accretion_enabled",  False)
+        bands         = params.get("bands",          [LAND_USE])
 
         # data injected by execute_lifecycle — no I/O here
         backend, meta, start = data
@@ -195,13 +200,13 @@ class BrmangueRasterExecutor(ModelExecutor):
 
         FloodModel(
             backend       = backend,
-            taxa_elevacao = taxa_elevacao,
+            sea_level_rise_rate = sea_level_rise_rate,
         )
         MangroveModel(
             backend       = backend,
-            taxa_elevacao = taxa_elevacao,
-            altura_mare   = altura_mare,
-            acrecao_ativa = acrecao_ativa,
+            sea_level_rise_rate = sea_level_rise_rate,
+            tide_height   = tide_height,
+            accretion_enabled = accretion_enabled,
         )
 
         if params.get("interactive", False):
@@ -265,10 +270,10 @@ def _check_bands(backend, record: ExperimentRecord) -> None:
             f"Available bands: {sorted(actual)}"
         )
 
-    alt = backend.get("alt")
+    alt = backend.get(ALTITUDE)
     if alt.min() < -500 or alt.max() > 9000:
         raise ValueError(
-            f"Band 'alt' has implausible values: [{alt.min():.1f}, {alt.max():.1f}]. "
+            f"Band '{ALTITUDE}' has implausible values: [{alt.min():.1f}, {alt.max():.1f}]. "
             f"Expected elevation in metres. Check band_map."
         )
 

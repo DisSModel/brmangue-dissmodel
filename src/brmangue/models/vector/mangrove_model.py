@@ -14,7 +14,7 @@ Three processes per step — order identical to the Lua model and the
 raster implementation:
 
     1. migrateSoils   — propagates mangrove substrate
-    2. migrateUses    — propagates MANGUE_MIGRADO land use (uses solo_past)
+    2. migrateUses    — propagates MIGRATED_MANGROVE land use (uses solo_past)
     3. applyAccretion — increases elevation (Alongi 2008, disabled by default)
 
 CRITICAL NOTE: migrateUses uses solo_past — consistent with the .past
@@ -28,7 +28,7 @@ Usage
 
     gdf = gpd.read_file("flood_model.shp")
     env = Environment(start_time=1, end_time=88)
-    MangroveModel(gdf=gdf, taxa_elevacao=0.011)
+    MangroveModel(gdf=gdf, sea_level_rise_rate=0.011)
     env.run()
 """
 from __future__ import annotations
@@ -40,15 +40,16 @@ from dissmodel.geo.vector.sync_model import SyncSpatialModel
 from dissmodel.visualization import track_plot
 
 from brmangue.common.constants import (
-    MANGUE,
-    MANGUE_MIGRADO,
-    VEGETACAO_TERRESTRE,
-    SOLO_DESCOBERTO,
-    USOS_INUNDADOS,
-    SOLO_MANGUE,
-    SOLO_MANGUE_MIGRADO,
-    SOLO_CANAL_FLUVIAL,
+    MANGROVE,
+    MIGRATED_MANGROVE,
+    TERRESTRIAL_VEGETATION,
+    BARE_SOIL,
+    FLOODED_USES,
+    SOIL_MANGROVE,
+    SOIL_MIGRATED_MANGROVE,
+    SOIL_RIVER_CHANNEL,
 )
+from brmangue.common.constants import ALTITUDE, LAND_USE, SOIL, past
 
 
 @track_plot("mangrove_migrated", "green")
@@ -60,8 +61,8 @@ class MangroveModel(SyncSpatialModel):
     -----------------------------------
     np.isin(solo, SOIL_SOURCES)      →  solo_past.isin(SOIL_SOURCES)
     shift2d loop over DIRS_MOORE     →  loop over real GDF neighbors
-    np.where(cond, new, current)     →  solo_novo[idx] = SOLO_MANGUE_MIGRADO
-    solo_past (not solo_novo)        →  solo_past[idx] — same .past care
+    np.where(cond, new, current)     →  solo_new[idx] = SOIL_MIGRATED_MANGROVE
+    solo_past (not solo_new)        →  solo_past[idx] — same .past care
 
     Snapshot semantics (``SyncSpatialModel``): FloodModel, registered first,
     freezes the START-of-step state in ``<col>_past``; this model reads it
@@ -70,40 +71,40 @@ class MangroveModel(SyncSpatialModel):
 
     Parameters
     ----------
-    gdf           : GeoDataFrame with columns attr_uso, attr_alt, attr_solo
-    taxa_elevacao : meters/year — IPCC RCP8.5 ≈ 0.011
-    altura_mare   : base tidal influence height (AIM) in meters. Default: 6.0
-    acrecao_ativa : enables applyAccretion (Alongi 2008). Default: False
-    attr_uso      : land-use column. Default: "uso"
-    attr_alt      : elevation column. Default: "alt"
-    attr_solo     : soil type column. Default: "solo"
+    gdf           : GeoDataFrame with columns land_use_attr, altitude_attr, soil_attr
+    sea_level_rise_rate : meters/year — IPCC RCP8.5 ≈ 0.011
+    tide_height   : base tidal influence height (AIM) in meters. Default: 6.0
+    accretion_enabled : enables applyAccretion (Alongi 2008). Default: False
+    land_use_attr      : land-use column. Default: LAND_USE
+    altitude_attr      : elevation column. Default: ALTITUDE
+    soil_attr     : soil type column. Default: SOIL
     """
 
     # constant names match the canonical raster model
-    SOIL_SOURCES   = [SOLO_MANGUE, SOLO_MANGUE_MIGRADO, SOLO_CANAL_FLUVIAL]
-    MANGROVE_SOILS = [SOLO_MANGUE, SOLO_MANGUE_MIGRADO]
-    USE_SOURCES    = [MANGUE, MANGUE_MIGRADO]
-    USE_TARGETS    = [VEGETACAO_TERRESTRE, SOLO_DESCOBERTO]
+    SOIL_SOURCES   = [SOIL_MANGROVE, SOIL_MIGRATED_MANGROVE, SOIL_RIVER_CHANNEL]
+    MANGROVE_SOILS = [SOIL_MANGROVE, SOIL_MIGRATED_MANGROVE]
+    USE_SOURCES    = [MANGROVE, MIGRATED_MANGROVE]
+    USE_TARGETS    = [TERRESTRIAL_VEGETATION, BARE_SOIL]
     COEF_A, COEF_B = 1.693, 0.939   # Alongi 2008
 
     def setup(
         self,
-        taxa_elevacao: float = 0.011,
-        altura_mare:   float = 6.0,
-        acrecao_ativa: bool  = False,
-        attr_uso:      str   = "uso",
-        attr_alt:      str   = "alt",
-        attr_solo:     str   = "solo",
+        sea_level_rise_rate: float = 0.011,
+        tide_height:   float = 6.0,
+        accretion_enabled: bool  = False,
+        land_use_attr:      str   = LAND_USE,
+        altitude_attr:      str   = ALTITUDE,
+        soil_attr:     str   = SOIL,
     ) -> None:
-        self.taxa_elevacao = taxa_elevacao
-        self.altura_mare   = altura_mare
-        self.acrecao_ativa = acrecao_ativa
-        self.attr_uso      = attr_uso
-        self.attr_alt      = attr_alt
-        self.attr_solo     = attr_solo
+        self.sea_level_rise_rate = sea_level_rise_rate
+        self.tide_height   = tide_height
+        self.accretion_enabled = accretion_enabled
+        self.land_use_attr      = land_use_attr
+        self.altitude_attr      = altitude_attr
+        self.soil_attr     = soil_attr
 
         # columns frozen as <col>_past (the first model to run owns the snapshot)
-        self.land_use_types = [attr_uso, attr_alt, attr_solo]
+        self.land_use_types = [land_use_attr, altitude_attr, soil_attr]
 
         # metrics exposed for @track_plot / Chart — names match the raster model
         self.mangrove_migrated = 0
@@ -115,72 +116,72 @@ class MangroveModel(SyncSpatialModel):
         # In a full run FloodModel (registered first) has already frozen the
         # START-of-step snapshot; taking it here would capture the post-flood
         # state. Only snapshot when running stand-alone (no snapshot yet).
-        if self.attr_uso + "_past" not in self.gdf.columns:
+        if past(self.land_use_attr) not in self.gdf.columns:
             self.synchronize()
 
     def execute(self) -> None:
-        nivel_mar = self.env.now() * self.taxa_elevacao
-        zi        = self.altura_mare + nivel_mar
-        taxa_ac   = self.COEF_A / 1000.0 + self.COEF_B * nivel_mar
+        sea_level = self.env.now() * self.sea_level_rise_rate
+        influence_zone        = self.tide_height + sea_level
+        accretion_rate   = self.COEF_A / 1000.0 + self.COEF_B * sea_level
 
         # START-of-step state (TerraME cell.past), frozen by SyncSpatialModel.
         # All writes below go over the CURRENT state (in place, as in TerraME).
-        uso_past  = self.gdf[self.attr_uso  + "_past"]
-        alt_past  = self.gdf[self.attr_alt  + "_past"]
-        solo_past = self.gdf[self.attr_solo + "_past"]
+        land_use_past  = self.gdf[past(self.land_use_attr)]
+        alt_past  = self.gdf[past(self.altitude_attr)]
+        soil_past = self.gdf[past(self.soil_attr)]
 
         # ── migrateSoils ─────────────────────────────────────────────────────
         # Source: cell.past[soil] in SOIL_SOURCES
         # Target: neighbor.use  in USE_TARGETS
-        #         neighbor.soil != SOLO_MANGUE_MIGRADO
+        #         neighbor.soil != SOIL_MIGRATED_MANGROVE
         #         neighbor.alt  <= influenceZone
-        fontes_solo = set(
-            solo_past.index[solo_past.isin(self.SOIL_SOURCES)]
+        soil_sources = set(
+            soil_past.index[soil_past.isin(self.SOIL_SOURCES)]
         )
-        solo_novo = self.gdf[self.attr_solo].copy()
+        soil_new = self.gdf[self.soil_attr].copy()
 
         for idx in self.gdf.index:
-            if uso_past[idx] not in self.USE_TARGETS:
+            if land_use_past[idx] not in self.USE_TARGETS:
                 continue
-            if solo_past[idx] == SOLO_MANGUE_MIGRADO:
+            if soil_past[idx] == SOIL_MIGRATED_MANGROVE:
                 continue
-            if alt_past[idx] > zi:
+            if alt_past[idx] > influence_zone:
                 continue
-            if any(n in fontes_solo for n in self.neighs_id(idx)):
-                solo_novo[idx] = SOLO_MANGUE_MIGRADO
+            if any(n in soil_sources for n in self.neighs_id(idx)):
+                soil_new[idx] = SOIL_MIGRATED_MANGROVE
 
         # ── migrateUses ──────────────────────────────────────────────────────
         # Source: cell.past[use] in USE_SOURCES
         # Target: neighbor.use  in USE_TARGETS
-        #         neighbor.soil in MANGROVE_SOILS ← solo_past (not solo_novo)
+        #         neighbor.soil in MANGROVE_SOILS ← solo_past (not solo_new)
         #         neighbor.alt  <= influenceZone
-        fontes_uso = set(
-            uso_past.index[uso_past.isin(self.USE_SOURCES)]
+        use_sources = set(
+            land_use_past.index[land_use_past.isin(self.USE_SOURCES)]
         )
-        uso_novo = self.gdf[self.attr_uso].copy()
+        land_use_new = self.gdf[self.land_use_attr].copy()
 
         for idx in self.gdf.index:
-            if uso_past[idx] not in self.USE_TARGETS:
+            if land_use_past[idx] not in self.USE_TARGETS:
                 continue
-            if solo_past[idx] not in self.MANGROVE_SOILS:
+            if soil_past[idx] not in self.MANGROVE_SOILS:
                 continue
-            if alt_past[idx] > zi:
+            if alt_past[idx] > influence_zone:
                 continue
-            if any(n in fontes_uso for n in self.neighs_id(idx)):
-                uso_novo[idx] = MANGUE_MIGRADO
+            if any(n in use_sources for n in self.neighs_id(idx)):
+                land_use_new[idx] = MIGRATED_MANGROVE
 
         # ── applyAccretion (disabled by default — commented in original Lua) ─
-        if self.acrecao_ativa:
-            alt_nova = self.gdf[self.attr_alt].copy()
+        if self.accretion_enabled:
+            alt_new = self.gdf[self.altitude_attr].copy()
             for idx in self.gdf.index:
-                if solo_past[idx] in self.MANGROVE_SOILS:
-                    if uso_past[idx] not in USOS_INUNDADOS:
-                        alt_nova[idx] += taxa_ac
-            self.gdf[self.attr_alt] = alt_nova
+                if soil_past[idx] in self.MANGROVE_SOILS:
+                    if land_use_past[idx] not in FLOODED_USES:
+                        alt_new[idx] += accretion_rate
+            self.gdf[self.altitude_attr] = alt_new
 
-        self.gdf[self.attr_uso]  = uso_novo
-        self.gdf[self.attr_solo] = solo_novo
+        self.gdf[self.land_use_attr]  = land_use_new
+        self.gdf[self.soil_attr] = soil_new
 
         # ── metrics ─────────────────────────────────────────────────────────
-        self.mangrove_migrated = int((uso_novo  == MANGUE_MIGRADO).sum())
-        self.soil_migrated     = int((solo_novo == SOLO_MANGUE_MIGRADO).sum())
+        self.mangrove_migrated = int((land_use_new  == MIGRATED_MANGROVE).sum())
+        self.soil_migrated     = int((soil_new == SOIL_MIGRATED_MANGROVE).sum())

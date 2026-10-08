@@ -10,14 +10,14 @@ Input contract
   record.source.uri                  → path to input shapefile or zip
   record.parameters["golden_dir"]    → directory with step_NN.csv files
   record.parameters["end_time"]      → int,   default 30
-  record.parameters["taxa_elevacao"] → float, default 0.05
-  record.parameters["altura_mare"]   → float, default 6.0
+  record.parameters["sea_level_rise_rate"] → float, default 0.05
+  record.parameters["tide_height"]   → float, default 6.0
   record.parameters["checkpoints"]   → list[int], default [1,5,10,15,20,25,30]
   record.parameters["alt_atol"]      → float, default 1e-3
 
 Output artifacts
 ----------------
-  scatter.png  — 3 scatter plots (uso, solo, alt) at the last checkpoint
+  scatter.png  — 3 scatter plots (land use, soil, altitude) at the last checkpoint
   report.md    — per-step accuracy table + runtime
 
 Usage
@@ -27,8 +27,8 @@ Usage
       --output examples/data/output/validation \\
       --param  golden_dir=tests/fixtures/golden \\
       --param  end_time=30 \\
-      --param  taxa_elevacao=0.05 \\
-      --param  altura_mare=6.0 \\
+      --param  sea_level_rise_rate=0.05 \\
+      --param  tide_height=6.0 \\
       --param  checkpoints=[1,5,10,15,20,25,30]
 """
 from __future__ import annotations
@@ -55,19 +55,22 @@ from dissmodel.executor.config    import settings
 from dissmodel.geo.raster.raster_model import RasterModel
 
 from brmangue.models.raster.flood_model    import FloodModel    as RasterFlood
-from brmangue.models.raster.mangrove_model import MangroveModel as RasterMangue
+from brmangue.models.raster.mangrove_model import MangroveModel as RasterMangrove
 from brmangue.common.constants      import CRS, CELL_SIZE
+from brmangue.common.utils import reject_renamed_parameters
+from brmangue.common.constants import ALTITUDE, LAND_USE, SOIL
 
 
 class CheckpointModel(RasterModel):
-    """Captura o estado das bandas ao final dos passos listados.
+    """Capture the state of the bands at the end of the listed steps.
 
-    Deve ser registrado DEPOIS de FloodModel e MangroveModel: o
-    ``Environment`` executa os modelos na ordem de registro, portanto o
-    snapshot reflete o estado ao FINAL do passo ``t``.
+    Must be registered AFTER FloodModel and MangroveModel: the
+    ``Environment`` runs models in registration order, so the snapshot
+    holds the state at the END of step ``t``.
 
-    Sem isso, o laço de métricas lê ``backend.get(band)`` após o término de
-    ``env.run()`` e compara o MESMO estado final contra todos os CSVs golden.
+    Without it, the metrics loop would read ``backend.get(band)`` after
+    ``env.run()`` has finished and compare the SAME final state against
+    every golden CSV.
     """
 
     def setup(self, backend, bands, checkpoints):
@@ -84,9 +87,9 @@ class CheckpointModel(RasterModel):
             }
 
 BANDS: dict[str, str] = {
-    "uso":  "exact",
-    "solo": "exact",
-    "alt":  "approx",
+    LAND_USE:  "exact",
+    SOIL: "exact",
+    ALTITUDE:  "approx",
 }
 
 DEFAULT_CHECKPOINTS = [1, 5, 10, 15, 20, 25, 30]
@@ -168,6 +171,7 @@ class ValidationExecutor(ModelExecutor):
         return gdf, golden_map
 
     def validate(self, record: ExperimentRecord) -> None:
+        reject_renamed_parameters(record.parameters)
         _normalize_params(record.parameters)
 
         if not record.source.uri:
@@ -196,8 +200,8 @@ class ValidationExecutor(ModelExecutor):
         _normalize_params(record.parameters)
         params        = record.parameters
         end_time      = params.get("end_time",      30)
-        taxa_elevacao = params.get("taxa_elevacao",  0.05)
-        altura_mare   = params.get("altura_mare",    6.0)
+        sea_level_rise_rate = params.get("sea_level_rise_rate",  0.05)
+        tide_height   = params.get("tide_height",    6.0)
         checkpoints   = params.get("checkpoints",    DEFAULT_CHECKPOINTS)
         alt_atol      = params.get("alt_atol",       1e-3)
 
@@ -208,9 +212,9 @@ class ValidationExecutor(ModelExecutor):
         backend, rows_idx, cols_idx = _build_raster(gdf_orig)
 
         env = Environment(start_time=1, end_time=end_time)
-        RasterFlood(backend=backend, taxa_elevacao=taxa_elevacao)
-        RasterMangue(backend=backend, taxa_elevacao=taxa_elevacao, altura_mare=altura_mare)
-        checkpointer = CheckpointModel(          # registrado POR ÚLTIMO
+        RasterFlood(backend=backend, sea_level_rise_rate=sea_level_rise_rate)
+        RasterMangrove(backend=backend, sea_level_rise_rate=sea_level_rise_rate, tide_height=tide_height)
+        checkpointer = CheckpointModel(          # registered LAST
             backend     = backend,
             bands       = list(BANDS),
             checkpoints = checkpoints,
@@ -316,7 +320,7 @@ def _normalize_params(params: dict) -> None:
     for key in ("end_time",):
         if key in params and isinstance(params[key], str):
             params[key] = int(params[key])
-    for key in ("taxa_elevacao", "altura_mare", "alt_atol"):
+    for key in ("sea_level_rise_rate", "tide_height", "alt_atol"):
         if key in params and isinstance(params[key], str):
             params[key] = float(params[key])
     if "checkpoints" in params and isinstance(params["checkpoints"], str):
@@ -363,7 +367,7 @@ def _build_raster(gdf: gpd.GeoDataFrame):
     mask[rows, cols] = True
     backend.set("mask", mask)
 
-    for band in ("uso", "alt", "solo"):
+    for band in (LAND_USE, ALTITUDE, SOIL):
         if band in gdf.columns:
             arr = np.zeros((n_rows, n_cols), dtype=np.float64)
             arr[rows, cols] = gdf[band].astype(float).values

@@ -18,11 +18,12 @@ from dissmodel.io.convert import vector_to_raster_backend
 from dissmodel.io.raster  import save_geotiff
 
 from brmangue.common.constants import TIFF_BANDS, CRS
+from brmangue.common.constants import ALTITUDE, LAND_USE, SOIL
 
 SHAPEFILE_DEFAULTS: dict[str, int | float] = {
-    "uso":  5,
-    "alt":  0.0,
-    "solo": 1,
+    LAND_USE:  5,
+    ALTITUDE:  0.0,
+    SOIL: 1,
 }
 
 
@@ -35,7 +36,7 @@ def prepare(shp: str, resolution: float, crs: str, output: str) -> None:
     print(f"Loading {shp_path}...")
     gdf = gpd.read_file(str(shp_path))
 
-    # Preenche os valores vazios (NaN) do vetor com os valores padrão
+    # Fill missing (NaN) values of the vector data with the defaults
     for col, default_val in SHAPEFILE_DEFAULTS.items():
         if col in gdf.columns:
             gdf[col] = gdf[col].fillna(default_val)

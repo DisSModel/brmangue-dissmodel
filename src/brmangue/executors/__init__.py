@@ -12,11 +12,10 @@ __all__ = [
     "BrmangueVectorExecutor",
     "BrmangueBenchmarkExecutor",
     "ValidationExecutor",
-    "EXECUTOR_REGISTRY", # Exportando o registro também
+    "EXECUTOR_REGISTRY", # the registry is exported too
 ]
 
-# BÔNUS PARA A API/WORKER:
-# Um dicionário que mapeia a string do request (JSON) para a Classe real
+# For the API/worker: maps the executor name in a (JSON) request to its class
 EXECUTOR_REGISTRY = {
     BrmangueRasterExecutor.name: BrmangueRasterExecutor,
     BrmangueVectorExecutor.name: BrmangueVectorExecutor,

@@ -68,7 +68,7 @@ python examples/main_raster.py run \
 python examples/main_benchmark.py run \
   --input  examples/data/input/synthetic_grid_60x60_shp.zip \
   --param  end_time=10 \
-  --param  taxa_elevacao=0.011 \
+  --param  sea_level_rise_rate=0.011 \
   --param  tolerance=0.05
 
 # Validate executor data contract without running
@@ -83,8 +83,8 @@ python src/brmangue/executors/validation_executor.py run \
   --input  examples/data/input/elevacao_pol.zip \
   --param  golden_dir=tests/fixtures/golden \
   --param  end_time=19 \
-  --param  taxa_elevacao=0.05 \
-  --param  altura_mare=6.0 \
+  --param  sea_level_rise_rate=0.05 \
+  --param  tide_height=6.0 \
   --param  checkpoints=[1,5,10,15,20]
 ```
 
@@ -98,7 +98,7 @@ curl -X POST http://localhost:8000/submit_job \
   -d '{
     "model_name":    "brmangue_raster",
     "input_dataset": "s3://dissmodel-inputs/ilha_maranhao_epsg31983.tif",
-    "parameters":    {"end_time": 88, "taxa_elevacao": 0.011}
+    "parameters":    {"end_time": 88, "sea_level_rise_rate": 0.011}
   }'
 ```
 
@@ -119,6 +119,69 @@ soil migration and optional sediment accretion (Alongi, 2008).
 
 Both processes exist in raster and vector form, using the same equations,
 thresholds, parameter names, and update ordering.
+
+---
+
+## 🔤 Naming (shared with brmangue-terrame)
+
+This package and the TerraME adaptation
+([`brmangue-terrame`](https://github.com/LambdaGeo/brmangue-terrame)) use the same
+English names, so the two codes can be read side by side. Python uses
+`snake_case`, Lua `camelCase`. The **data keep their Portuguese names**: bands and
+columns `uso`, `solo`, `alt`, and the class codes below.
+
+The attribute names are written **in one place only**, `brmangue.common.constants`;
+the rest of the code uses the constants (in Lua, the `attribute_names` table plays
+the same role):
+
+```python
+LAND_USE = "uso"     # Lua: attribute_names.land_use
+SOIL     = "solo"    # Lua: attribute_names.soil
+ALTITUDE = "alt"     # Lua: attribute_names.altitude
+past(LAND_USE)       # "uso_past", start-of-step snapshot (TerraME cell.past)
+```
+
+If the data are renamed, change these three lines. Files whose attributes have other
+names can also be mapped at run time, without code changes, with `column_map`
+(vector) or `band_map` (GeoTIFF).
+
+| Concept | Python (this package) | Lua (brmangue-terrame) |
+|---|---|---|
+| sea-level rise per step (m) | `sea_level_rise_rate` | `seaLevelRiseRate` |
+| tide height (m) | `tide_height` | `tideHeight` |
+| vertical accretion on/off | `accretion_enabled` | (`applyAccretion` call, commented out) |
+| sea level at step *t* | `sea_level` | `seaLevel` |
+| tidal influence zone | `influence_zone` | `influenceZone` |
+| flux / lower neighbours | `flux`, `lower_neighbors` | `flux`, `lowerNeighbors` |
+| land-use / soil / altitude attribute | `land_use_attr`, `soil_attr`, `altitude_attr` | `landUseAttr`, `soilAttr`, `altitudeAttr` |
+| models | `FloodModel`, `MangroveModel` | `Flood` (`models/flood.lua`), `Mangrove` (`models/mangrove.lua`) |
+| flooded uses / flooding rules | `FLOODED_USES`, `FLOODING_RULES` | `isSeaOrFlooded`, `applyFlooding` |
+
+| Code | Land use (`uso`) | Original name |
+|-----:|---|---|
+| 1 | `MANGROVE` | Mangue |
+| 2 | `TERRESTRIAL_VEGETATION` | Vegetação terrestre |
+| 3 | `SEA` | Mar |
+| 4 | `ANTHROPIZED_AREA` | Área antropizada |
+| 5 | `BARE_SOIL` | Solo descoberto |
+| 6 | `FLOODED_SOIL` | Solo inundado |
+| 7 | `FLOODED_ANTHROPIZED_AREA` | Área antropizada inundada |
+| 8 | `MIGRATED_MANGROVE` | Mangue migrado |
+| 9 | `FLOODED_MANGROVE` | Mangue inundado |
+| 10 | `FLOODED_TERRESTRIAL_VEGETATION` | Vegetação terrestre inundada |
+
+| Code | Soil (`solo`) — Python / Lua | Original name |
+|-----:|---|---|
+| 0 | `SOIL_RIVER_CHANNEL` / `soil_classes.RIVER_CHANNEL` | Canal fluvial |
+| 1 | `SOIL_RIVERBED` / `soil_classes.RIVERBED` (no transition rule) | Leito de rio |
+| 2 | `SOIL_PODZOLIC` / `soil_classes.PODZOLIC` (no transition rule) | Podzólico |
+| 3 | `SOIL_MANGROVE` / `soil_classes.MANGROVE` (mangrove mud) | Mangue |
+| 4 | `SOIL_OTHER` / `soil_classes.OTHER` | Outros |
+| 9 | `SOIL_MIGRATED_MANGROVE` / `soil_classes.MIGRATED_MANGROVE` | Mangue migrado |
+
+Before 0.5.0 these names were in Portuguese (`taxa_elevacao`, `altura_mare`,
+`acrecao_ativa`, `MANGUE_MIGRADO`, `SOLO_MANGUE`…). The executors reject the old
+parameter names with a message that gives the new one; see `CHANGELOG.md`.
 
 ---
 
@@ -144,8 +207,8 @@ python examples/main_vector.py run \
   --input  examples/data/input/synthetic_grid_60x60_shp.zip \
   --output examples/data/output/saida.gpkg \
   --param  end_time=88 \
-  --param  taxa_elevacao=0.5 \
-  --param  altura_mare=6.0
+  --param  sea_level_rise_rate=0.5 \
+  --param  tide_height=6.0
 
 # With column remapping (source uses non-canonical names)
 python examples/main_vector.py run \
@@ -160,8 +223,8 @@ python examples/main_vector.py run \
 python examples/main_benchmark.py run \
   --input  examples/data/input/synthetic_grid_60x60_shp.zip \
   --param  end_time=10 \
-  --param  taxa_elevacao=0.011 \
-  --param  altura_mare=6.0 \
+  --param  sea_level_rise_rate=0.011 \
+  --param  tide_height=6.0 \
   --param  tolerance=0.05
 
 # Output artifacts written to outputs/experiments/<id>/benchmark/
@@ -200,7 +263,7 @@ brmangue-dissmodel/
 │   └── brmangue/
 │       ├── __init__.py
 │       ├── common/
-│       │   ├── constants.py              # TIFF_BANDS, CRS, USO_COLORS, ...
+│       │   ├── constants.py              # TIFF_BANDS, CRS, USE_COLORS, ...
 │       │   └── utils.py                  # default_output_uri helper
 │       ├── executors/                    # ModelExecutor implementations
 │       │   ├── __init__.py               # imports executors → auto-registration
@@ -241,7 +304,7 @@ Two test modules cover basic model correctness without external data:
   with hand-calculated expected values (flood propagation, mangrove soil/use
   migration, altitude blocking).
 - **`tests/test_model_invariants.py`** — structural invariants on a 5×5 real grid
-  (flooded cells monotonically non-decreasing, `SOLO_MANGUE_MIGRADO` never
+  (flooded cells monotonically non-decreasing, `SOIL_MIGRATED_MANGROVE` never
   reverts, masked cells never change, etc.).
 
 ```bash
@@ -268,7 +331,7 @@ to `step_{N+1}.csv`, applied via `GOLDEN_STEP_OFFSET` in the executor.
 
 With 20 golden files, the highest comparable simulation step is **19**.
 
-#### Results so far (Maranhão Island, 50,496 cells, `taxa_elevacao=0.05`)
+#### Results so far (Maranhão Island, 50,496 cells, `sea_level_rise_rate=0.05`)
 
 | Step | `uso` | `solo` | `alt` (1 mm tol) | `alt` MAE |
 |-----:|------:|-------:|-----------------:|----------:|
@@ -287,7 +350,7 @@ cells sequentially, NumPy adds neighbour contributions per direction) flips an
 occasional comparison. Fed the exact TerraME state (17 significant digits), the
 elevation rule reproduces the next TerraME step to 1e-14 at most steps.
 
-#### Flood scenario (`taxa_elevacao=0.5`, `FINAL_TIME=11`)
+#### Flood scenario (`sea_level_rise_rate=0.5`, `FINAL_TIME=11`)
 
 Same dataset, with the laboratory parameters of `lab1.lua`, where flooding does
 occur (TerraME flood golden regenerated with TerraME 2.0.1; 2,469 flooded cells
@@ -316,7 +379,7 @@ steps; this scenario should be read as "same dynamics, not bit-identical".
 These results should be read with care, because **the model has been validated
 on two scenarios so far**, and the baseline one is a limited test:
 
-- At `taxa_elevacao=0.05` the flood component **never triggers a land-use
+- At `sea_level_rise_rate=0.05` the flood component **never triggers a land-use
   transition**: the lowest cell adjacent to a source sits at 1.0 m and the sea only
   reaches 1.0 m at step 20, by which point flux diffusion has raised it further.
   The golden CSVs show TerraME behaving the same way (zero newly flooded cells

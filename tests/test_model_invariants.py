@@ -9,8 +9,8 @@ they verify that the model never violates its own rules.
 Invariants tested:
     1. uso and solo values always stay within their valid domains
     2. Flooded cells are monotonically non-decreasing
-    3. Soil migration is irreversible (SOLO_MANGUE_MIGRADO never reverts)
-    4. Mangrove area (MANGUE + MANGUE_MIGRADO + MANGUE_INUNDADO) is non-decreasing
+    3. Soil migration is irreversible (SOIL_MIGRATED_MANGROVE never reverts)
+    4. Mangrove area (MANGROVE + MIGRATED_MANGROVE + FLOODED_MANGROVE) is non-decreasing
     5. zonaInfluencia is monotonically increasing (deterministic driver)
     6. Cells outside the mask never change state
 
@@ -35,11 +35,12 @@ from brmangue.models.raster.flood_model    import FloodModel
 from brmangue.models.raster.mangrove_model import MangroveModel
 
 from brmangue.common.constants import (
-    USOS_INUNDADOS,
-    MANGUE, MANGUE_MIGRADO, MANGUE_INUNDADO,
-    SOLO_MANGUE, SOLO_MANGUE_MIGRADO, SOLO_CANAL_FLUVIAL, SOLO_OUTROS,
-    VALID_SOLO,   # ← importar daqui
+    FLOODED_USES,
+    MANGROVE, MIGRATED_MANGROVE, FLOODED_MANGROVE,
+    SOIL_MANGROVE, SOIL_MIGRATED_MANGROVE, SOIL_RIVER_CHANNEL, SOIL_OTHER,
+    VALID_SOILS,   # ← importar daqui
 )
+from brmangue.common.constants import ALTITUDE, LAND_USE, SOIL
 
 # ── paths ─────────────────────────────────────────────────────────────────────
 
@@ -50,22 +51,22 @@ INPUT_ZIP = (
 
 # ── model parameters ──────────────────────────────────────────────────────────
 
-TAXA_ELEVACAO = 0.05
-ALTURA_MARE   = 6.0
+SEA_LEVEL_RISE_RATE = 0.05
+TIDE_HEIGHT   = 6.0
 N_STEPS       = 30
 
 # ── valid domains ─────────────────────────────────────────────────────────────
 
-VALID_USO  = set(range(1, 11))           # {1 … 10}
+VALID_USES  = set(range(1, 11))           # {1 … 10}
 
-MANGUE_SET = {MANGUE, MANGUE_MIGRADO, MANGUE_INUNDADO}
+MANGROVE_SET = {MANGROVE, MIGRATED_MANGROVE, FLOODED_MANGROVE}
 
 # ── fixtures ──────────────────────────────────────────────────────────────────
 
 @pytest.fixture(scope="module")
 def backend_sequence():
     """
-    Run the full simulation and return a list of (uso, solo, alt) snapshots,
+    Run the full simulation and return a list of (land use, soil, altitude) snapshots,
     one per step, plus the mask.
 
     scope=module: the simulation runs once and all tests share the results.
@@ -83,24 +84,24 @@ def backend_sequence():
 
     # patch execute to capture state after each step
     env       = Environment(start_time=1, end_time=N_STEPS)
-    flood     = FloodModel(backend=backend, taxa_elevacao=TAXA_ELEVACAO)
+    flood     = FloodModel(backend=backend, sea_level_rise_rate=SEA_LEVEL_RISE_RATE)
     mangrove  = MangroveModel(
         backend       = backend,
-        taxa_elevacao = TAXA_ELEVACAO,
-        altura_mare   = ALTURA_MARE,
+        sea_level_rise_rate = SEA_LEVEL_RISE_RATE,
+        tide_height   = TIDE_HEIGHT,
     )
 
-    orig_mangue_execute = mangrove.execute
+    orig_mangrove_execute = mangrove.execute
 
-    def patched_mangue():
-        orig_mangue_execute()
+    def patched_mangrove():
+        orig_mangrove_execute()
         snapshots.append({
-            "uso":  backend.get("uso").copy(),
-            "solo": backend.get("solo").copy(),
-            "alt":  backend.get("alt").copy(),
+            LAND_USE:  backend.get(LAND_USE).copy(),
+            SOIL: backend.get(SOIL).copy(),
+            ALTITUDE:  backend.get(ALTITUDE).copy(),
         })
 
-    mangrove.execute = patched_mangue
+    mangrove.execute = patched_mangrove
     env.run()
 
     mask = backend.arrays.get("mask", np.ones(backend.shape, dtype=bool)).astype(bool)
@@ -124,7 +125,7 @@ def _build_backend(gdf: gpd.GeoDataFrame) -> RasterBackend:
     mask[rows, cols] = True
     backend.set("mask", mask)
 
-    for band in ("uso", "alt", "solo"):
+    for band in (LAND_USE, ALTITUDE, SOIL):
         arr = np.zeros((n_rows, n_cols), dtype=np.float32)
         arr[rows, cols] = gdf[band].astype(float).values
         backend.set(band, arr)
@@ -134,31 +135,31 @@ def _build_backend(gdf: gpd.GeoDataFrame) -> RasterBackend:
 
 # ── invariant 1: valid domains ────────────────────────────────────────────────
 
-def test_uso_always_within_valid_domain(backend_sequence):
+def test_land_use_always_within_valid_domain(backend_sequence):
     """
     uso must always be in {1..10} for every valid cell at every step.
     """
     snapshots, mask = backend_sequence
     for step, snap in enumerate(snapshots, start=1):
-        uso_vals = set(snap["uso"][mask].astype(int).tolist())
-        invalid  = uso_vals - VALID_USO
+        land_use_vals = set(snap[LAND_USE][mask].astype(int).tolist())
+        invalid  = land_use_vals - VALID_USES
         assert not invalid, (
             f"Step {step:02d}: uso has invalid values {invalid}. "
-            f"Valid domain is {VALID_USO}."
+            f"Valid domain is {VALID_USES}."
         )
 
 
-def test_solo_always_within_valid_domain(backend_sequence):
+def test_soil_always_within_valid_domain(backend_sequence):
     """
     solo must always be in {0, 3, 4, 9} for every valid cell at every step.
     """
     snapshots, mask = backend_sequence
     for step, snap in enumerate(snapshots, start=1):
-        solo_vals = set(snap["solo"][mask].astype(int).tolist())
-        invalid   = solo_vals - VALID_SOLO
+        soil_vals = set(snap[SOIL][mask].astype(int).tolist())
+        invalid   = soil_vals - VALID_SOILS
         assert not invalid, (
             f"Step {step:02d}: solo has invalid values {invalid}. "
-            f"Valid domain is {VALID_SOLO}."
+            f"Valid domain is {VALID_SOILS}."
         )
 
 
@@ -166,12 +167,12 @@ def test_solo_always_within_valid_domain(backend_sequence):
 
 def test_flooded_cells_monotonically_nondecreasing(backend_sequence):
     """
-    The count of flooded cells (all USOS_INUNDADOS) must never decrease.
+    The count of flooded cells (all FLOODED_USES) must never decrease.
     Once a cell is flooded, it cannot revert (no accretion, no drainage).
     """
     snapshots, mask = backend_sequence
     counts = [
-        int(np.isin(snap["uso"][mask], USOS_INUNDADOS).sum())
+        int(np.isin(snap[LAND_USE][mask], FLOODED_USES).sum())
         for snap in snapshots
     ]
     for i in range(1, len(counts)):
@@ -183,23 +184,23 @@ def test_flooded_cells_monotonically_nondecreasing(backend_sequence):
 
 # ── invariant 3: soil migration is irreversible ───────────────────────────────
 
-def test_solo_mangue_migrado_never_reverts(backend_sequence):
+def test_soil_migrated_mangrove_never_reverts(backend_sequence):
     """
-    Once a cell reaches SOLO_MANGUE_MIGRADO, its soil type must not
+    Once a cell reaches SOIL_MIGRATED_MANGROVE, its soil type must not
     change to any other value in subsequent steps.
     """
     snapshots, mask = backend_sequence
     for i in range(1, len(snapshots)):
-        prev = snapshots[i - 1]["solo"]
-        curr = snapshots[i]["solo"]
+        prev = snapshots[i - 1][SOIL]
+        curr = snapshots[i][SOIL]
 
-        was_migrado = (prev == SOLO_MANGUE_MIGRADO) & mask
-        reverted    = was_migrado & (curr != SOLO_MANGUE_MIGRADO)
+        was_migrated = (prev == SOIL_MIGRATED_MANGROVE) & mask
+        reverted    = was_migrated & (curr != SOIL_MIGRATED_MANGROVE)
 
         n_reverted = int(reverted.sum())
         assert n_reverted == 0, (
             f"Step {i+1:02d}: {n_reverted} cells reverted from "
-            f"SOLO_MANGUE_MIGRADO to another soil type."
+            f"SOIL_MIGRATED_MANGROVE to another soil type."
         )
 
 
@@ -207,7 +208,7 @@ def test_solo_mangue_migrado_never_reverts(backend_sequence):
 
 def test_mangrove_area_nondecreasing(backend_sequence):
     """
-    The total mangrove footprint (MANGUE + MANGUE_MIGRADO + MANGUE_INUNDADO)
+    The total mangrove footprint (MANGROVE + MIGRATED_MANGROVE + FLOODED_MANGROVE)
     must be monotonically non-decreasing.
 
     Rationale: mangrove cells can migrate or flood, but the model has
@@ -216,7 +217,7 @@ def test_mangrove_area_nondecreasing(backend_sequence):
     """
     snapshots, mask = backend_sequence
     counts = [
-        int(np.isin(snap["uso"][mask], list(MANGUE_SET)).sum())
+        int(np.isin(snap[LAND_USE][mask], list(MANGROVE_SET)).sum())
         for snap in snapshots
     ]
     for i in range(1, len(counts)):
@@ -226,23 +227,23 @@ def test_mangrove_area_nondecreasing(backend_sequence):
         )
 
 
-# ── invariant 5: zona de influência is strictly increasing ───────────────────
+# ── invariant 5: the tidal influence zone is strictly increasing ───────────────────
 
 def test_zona_influencia_strictly_increasing():
     """
-    zonaInfluencia = altura_mare + t * taxa_elevacao is a strictly
+    zonaInfluencia = tide_height + t * sea_level_rise_rate is a strictly
     increasing function of time — a deterministic property of the driver.
 
     This test does not run the model; it verifies the formula directly.
     """
-    zi_prev = ALTURA_MARE
+    influence_zone_prev = TIDE_HEIGHT
     for t in range(1, N_STEPS + 1):
-        zi = ALTURA_MARE + t * TAXA_ELEVACAO
-        assert zi > zi_prev, (
+        influence_zone = TIDE_HEIGHT + t * SEA_LEVEL_RISE_RATE
+        assert influence_zone > influence_zone_prev, (
             f"zonaInfluencia not strictly increasing at t={t}: "
-            f"{zi_prev} → {zi}"
+            f"{influence_zone_prev} → {influence_zone}"
         )
-        zi_prev = zi
+        influence_zone_prev = influence_zone
 
 
 # ── invariant 6: cells outside mask never change ─────────────────────────────
@@ -257,7 +258,7 @@ def test_masked_cells_never_change(backend_sequence):
 
     # initial state for outside cells is zero (set in _build_backend)
     for step, snap in enumerate(snapshots, start=1):
-        for band in ("uso", "solo"):
+        for band in (LAND_USE, SOIL):
             vals = snap[band][outside]
             assert (vals == 0).all(), (
                 f"Step {step:02d}: band '{band}' has non-zero values "
@@ -291,8 +292,8 @@ def _validation_metrics(end_time: int, checkpoints: list[int]) -> dict:
         parameters={
             "golden_dir":    str(GOLDEN_DIR),
             "end_time":      end_time,
-            "taxa_elevacao": 0.05,
-            "altura_mare":   6.0,
+            "sea_level_rise_rate": 0.05,
+            "tide_height":   6.0,
             "checkpoints":   checkpoints,
         },
     )
@@ -306,7 +307,7 @@ def test_checkpoint_metrics_independent_of_end_time():
     short = _validation_metrics(end_time=3,  checkpoints=[1])
     long_ = _validation_metrics(end_time=19, checkpoints=[1, 5, 10, 19])
 
-    for band in ("uso", "solo", "alt"):
+    for band in (LAND_USE, SOIL, ALTITUDE):
         a = short["1"][band]
         b = long_["1"][band]
         assert a["match_pct"] == pytest.approx(b["match_pct"], abs=1e-9), (
@@ -335,7 +336,7 @@ def test_categorical_bands_match_terrame_exactly(step):
     """`uso` and `solo` must agree with TerraME on every cell."""
     metrics = _validation_metrics(end_time=19, checkpoints=[1, 5, 10, 19])
 
-    for band in ("uso", "solo"):
+    for band in (LAND_USE, SOIL):
         m = metrics[str(step)][band]
         assert m["match_pct"] == pytest.approx(100.0, abs=1e-9), (
             f"step {step}, band {band}: match={m['match_pct']:.4f}% "
@@ -351,7 +352,7 @@ def test_categorical_bands_match_terrame_exactly(step):
 def test_flood_model_floods_with_laboratory_parameters():
     """FloodModel must trigger land-use transitions at the lab's sea-level rate.
 
-    The reference scenario (`taxa_elevacao=0.05`) never floods a single cell:
+    The reference scenario (`sea_level_rise_rate=0.05`) never floods a single cell:
     the lowest cell adjacent to a source sits at 1.0 m and the sea only reaches
     1.0 m at step 20, by which point flux diffusion has raised it further. The
     golden CSVs confirm TerraME behaves identically (0 newly flooded cells in
@@ -375,13 +376,13 @@ def test_flood_model_floods_with_laboratory_parameters():
     backend, _, _ = _build_raster(gdf)
 
     env = Environment(start_time=1, end_time=11)
-    flood = FloodModel(backend=backend, taxa_elevacao=0.5)
-    MangroveModel(backend=backend, taxa_elevacao=0.5, altura_mare=6.0)
+    flood = FloodModel(backend=backend, sea_level_rise_rate=0.5)
+    MangroveModel(backend=backend, sea_level_rise_rate=0.5, tide_height=6.0)
     env.run()
 
     assert flood.flooded_cells > 0, (
         "FloodModel flooded no cells even at the laboratory sea-level rate "
-        "(taxa_elevacao=0.5, 11 steps). The flood component is not firing."
+        "(sea_level_rise_rate=0.5, 11 steps). The flood component is not firing."
     )
 
 
@@ -397,14 +398,14 @@ def test_flood_flux_counts_only_real_neighbours():
     from brmangue.models.raster.flood_model import FloodModel
 
     b = RasterBackend(shape=(3, 3))
-    uso = np.full((3, 3), 2, dtype=np.int16)
-    uso[0, 0] = 3                                  # sea in the corner
-    b.set("uso", uso)
-    b.set("alt", np.full((3, 3), 5.0))
+    land_use = np.full((3, 3), 2, dtype=np.int16)
+    land_use[0, 0] = 3                                  # sea in the corner
+    b.set(LAND_USE, land_use)
+    b.set(ALTITUDE, np.full((3, 3), 5.0))
     b.set("mask", np.ones((3, 3), dtype=bool))
     env = Environment(start_time=1, end_time=1)
-    FloodModel(backend=b, taxa_elevacao=0.4)
+    FloodModel(backend=b, sea_level_rise_rate=0.4)
     env.run()
-    alt = b.get("alt")
+    alt = b.get(ALTITUDE)
     assert abs(alt[0, 0] - (5.0 + 0.4 / 4)) < 1e-9
     assert abs(alt[0, 1] - (5.0 + 0.4 / 4)) < 1e-9
