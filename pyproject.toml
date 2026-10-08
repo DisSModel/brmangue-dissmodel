@@ -14,7 +14,7 @@ authors = [
 ]
 license = { text = "MIT" }
 dependencies = [
-    "dissmodel>=0.4.0",
+    "dissmodel>=0.6.0",   # SyncRasterModel/SyncSpatialModel pre_execute/post_execute API; tests fail on 0.5.x
     "numpy>=1.23.0",
     "geopandas>=0.12.0",
     "shapely>=2.0.0",
