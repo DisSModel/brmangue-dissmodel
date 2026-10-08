@@ -1,112 +1,136 @@
 """
 brmangue/constants.py — BR-MANGUE Domain Constants
 =========================================================
-Land use and soil tables aligned with the original Lua model (Bezerra, 2014).
+Land-use and soil classes of the original Lua model (Bezerra, 2014). Names follow
+the glossary shared with brmangue-terrame (LambdaGeo/brmangue-terrame): the same
+class names as its `land_use_classes` / `soil_classes` tables, with a SOIL_
+prefix for soils. The codes are those of the data and never change.
 CRS and geographic parameters for Maranhão Island.
 """
 from __future__ import annotations
 
-# ── tabela_usos ───────────────────────────────────────────────────────────────
-MANGUE                    = 1
-VEGETACAO_TERRESTRE       = 2
-MAR                       = 3
-AREA_ANTROPIZADA          = 4
-SOLO_DESCOBERTO           = 5
-SOLO_INUNDADO             = 6
-AREA_ANTROPIZADA_INUNDADA = 7
-MANGUE_MIGRADO            = 8
-MANGUE_INUNDADO           = 9
-VEG_TERRESTRE_INUNDADA    = 10
+# ── data attribute / band names ───────────────────────────────────────────────
+# The only place where the names of the data attributes are written. The code
+# refers to them through these constants, so if the data are renamed (e.g. to
+# English) only these three lines change. Input files with other names can
+# also be mapped at run time with `column_map` (vector) or `band_map` (GeoTIFF).
+LAND_USE = "uso"
+SOIL     = "solo"
+ALTITUDE = "alt"
 
-USOS_INUNDADOS: list[int] = [
-    MAR, SOLO_INUNDADO, AREA_ANTROPIZADA_INUNDADA,
-    MANGUE_INUNDADO, VEG_TERRESTRE_INUNDADA,
+STATE_ATTRIBUTES: tuple[str, ...] = (LAND_USE, ALTITUDE, SOIL)
+
+# dissmodel's SyncRasterModel / SyncSpatialModel keep the start-of-step state
+# of each attribute in "<name>_past" (TerraME: cell.past[name]).
+PAST_SUFFIX = "_past"
+
+
+def past(name: str) -> str:
+    """Name of the start-of-step snapshot of an attribute, e.g. ``"uso_past"``."""
+    return name + PAST_SUFFIX
+
+
+# ── land-use classes (land_use_classes in brmangue-terrame) ───────────────────────────────────────────────────────────────
+MANGROVE                    = 1
+TERRESTRIAL_VEGETATION       = 2
+SEA                       = 3
+ANTHROPIZED_AREA          = 4
+BARE_SOIL           = 5
+FLOODED_SOIL             = 6
+FLOODED_ANTHROPIZED_AREA = 7
+MIGRATED_MANGROVE            = 8
+FLOODED_MANGROVE           = 9
+FLOODED_TERRESTRIAL_VEGETATION    = 10
+
+FLOODED_USES: list[int] = [
+    SEA, FLOODED_SOIL, FLOODED_ANTHROPIZED_AREA,
+    FLOODED_MANGROVE, FLOODED_TERRESTRIAL_VEGETATION,
 ]
 
-# seco → inundado (Bezerra 2014)
-REGRAS_INUNDACAO: dict[int, int] = {
-    MANGUE:              MANGUE_INUNDADO,
-    MANGUE_MIGRADO:      MANGUE_INUNDADO,
-    VEGETACAO_TERRESTRE: VEG_TERRESTRE_INUNDADA,
-    AREA_ANTROPIZADA:    AREA_ANTROPIZADA_INUNDADA,
-    SOLO_DESCOBERTO:     SOLO_INUNDADO,
+# dry → flooded (Bezerra 2014)
+FLOODING_RULES: dict[int, int] = {
+    MANGROVE:              FLOODED_MANGROVE,
+    MIGRATED_MANGROVE:      FLOODED_MANGROVE,
+    TERRESTRIAL_VEGETATION: FLOODED_TERRESTRIAL_VEGETATION,
+    ANTHROPIZED_AREA:    FLOODED_ANTHROPIZED_AREA,
+    BARE_SOIL:     FLOODED_SOIL,
 }
 
-USO_LABELS: dict[int, str] = {
-    MANGUE:                    "Mangue",
-    VEGETACAO_TERRESTRE:       "Vegetação Terrestre",
-    MAR:                       "Mar",
-    AREA_ANTROPIZADA:          "Área Antropizada",
-    SOLO_DESCOBERTO:           "Solo Descoberto",
-    SOLO_INUNDADO:             "Solo Inundado",
-    AREA_ANTROPIZADA_INUNDADA: "Área Antrop. Inundada",
-    MANGUE_MIGRADO:            "Mangue Migrado",
-    MANGUE_INUNDADO:           "Mangue Inundado",
-    VEG_TERRESTRE_INUNDADA:    "Veg. Terrestre Inundada",
+USE_LABELS: dict[int, str] = {
+    MANGROVE:                    "Mangrove",
+    TERRESTRIAL_VEGETATION:       "Terrestrial vegetation",
+    SEA:                       "Sea",
+    ANTHROPIZED_AREA:          "Anthropized area",
+    BARE_SOIL:           "Bare soil",
+    FLOODED_SOIL:             "Flooded soil",
+    FLOODED_ANTHROPIZED_AREA: "Flooded anthropized area",
+    MIGRATED_MANGROVE:            "Migrated mangrove",
+    FLOODED_MANGROVE:           "Flooded mangrove",
+    FLOODED_TERRESTRIAL_VEGETATION:    "Flooded terrestrial vegetation",
 }
 
-# cores exatas do Lua (tabela_usos RGB → hex)
-USO_COLORS: dict[int, str] = {
-    MANGUE:                    "#006400",
-    VEGETACAO_TERRESTRE:       "#808000",
-    MAR:                       "#00008b",
-    AREA_ANTROPIZADA:          "#ffd700",
-    SOLO_DESCOBERTO:           "#ffdead",
-    SOLO_INUNDADO:             "#000000",
-    AREA_ANTROPIZADA_INUNDADA: "#323232",
-    MANGUE_MIGRADO:            "#00ff00",
-    MANGUE_INUNDADO:           "#ff0000",
-    VEG_TERRESTRE_INUNDADA:    "#000000",
+# exact colours of the Lua model (land_use_classes RGB → hex)
+USE_COLORS: dict[int, str] = {
+    MANGROVE:                    "#006400",
+    TERRESTRIAL_VEGETATION:       "#808000",
+    SEA:                       "#00008b",
+    ANTHROPIZED_AREA:          "#ffd700",
+    BARE_SOIL:           "#ffdead",
+    FLOODED_SOIL:             "#000000",
+    FLOODED_ANTHROPIZED_AREA: "#323232",
+    MIGRATED_MANGROVE:            "#00ff00",
+    FLOODED_MANGROVE:           "#ff0000",
+    FLOODED_TERRESTRIAL_VEGETATION:    "#000000",
 }
 
-# ── tabela_solos ──────────────────────────────────────────────────────────────
-SOLO_CANAL_FLUVIAL  = 0
-SOLO_LEITO_RIO      = 1   # present in input data — no active rule (legacy class)
-SOLO_PODZOLICO      = 2   # present in input data — no active rule (legacy class)
-SOLO_MANGUE         = 3
-SOLO_OUTROS         = 4
-SOLO_MANGUE_MIGRADO = 9
+# ── soil classes (soil_classes in brmangue-terrame) ──────────────────────────────────────────────────────────────
+SOIL_RIVER_CHANNEL  = 0
+SOIL_RIVERBED      = 1   # present in input data — no active rule (legacy class)
+SOIL_PODZOLIC      = 2   # present in input data — no active rule (legacy class)
+SOIL_MANGROVE         = 3
+SOIL_OTHER         = 4
+SOIL_MIGRATED_MANGROVE = 9
 
 # All soil codes present in the input data. Values 1 and 2 are legacy classes
 # from the original Bezerra (2014) database that carry no transition rule in
-# the current model — they are treated as passive substrate (like SOLO_OUTROS).
-VALID_SOLO: set[int] = {
-    SOLO_CANAL_FLUVIAL,
-    SOLO_LEITO_RIO,
-    SOLO_PODZOLICO,
-    SOLO_MANGUE,
-    SOLO_OUTROS,
-    SOLO_MANGUE_MIGRADO,
+# the current model — they are treated as passive substrate (like SOIL_OTHER).
+VALID_SOILS: set[int] = {
+    SOIL_RIVER_CHANNEL,
+    SOIL_RIVERBED,
+    SOIL_PODZOLIC,
+    SOIL_MANGROVE,
+    SOIL_OTHER,
+    SOIL_MIGRATED_MANGROVE,
 }
 
-SOLO_LABELS: dict[int, str] = {
-    SOLO_CANAL_FLUVIAL:  "Canal Fluvial",
-    SOLO_LEITO_RIO:      "Leito de Rio",
-    SOLO_PODZOLICO:      "Podzólico",
-    SOLO_MANGUE:         "Mangue",
-    SOLO_MANGUE_MIGRADO: "Mangue Migrado",
-    SOLO_OUTROS:         "Outros",
+SOIL_LABELS: dict[int, str] = {
+    SOIL_RIVER_CHANNEL:  "River channel",
+    SOIL_RIVERBED:      "Riverbed",
+    SOIL_PODZOLIC:      "Podzolic",
+    SOIL_MANGROVE:         "Mangrove mud",
+    SOIL_MIGRATED_MANGROVE: "Migrated mangrove mud",
+    SOIL_OTHER:         "Other",
 }
 
-# ── geografia — Ilha do Maranhão ──────────────────────────────────────────────
+# ── geography — Maranhão Island ──────────────────────────────────────────────
 ORIGIN_X  = 500_000.0    # UTM Easting  (SIRGAS 2000 / UTM 24S)
 ORIGIN_Y  = 9_700_000.0  # UTM Northing
 CRS       = "EPSG:31984"
-CELL_SIZE = 100.0         # metros
+CELL_SIZE = 100.0         # metres
 
 # ── GeoTIFF: band specification (name, numpy dtype, nodata) ───────────────────
 TIFF_BANDS: list[tuple[str, str, float]] = [
-    ("uso",  "int16",   0),
-    ("alt",  "float32", -9999.0),
-    ("solo", "int16",   -1),
+    (LAND_USE, "int16",   0),
+    (ALTITUDE, "float32", -9999.0),
+    (SOIL,     "int16",   -1),
 ]
 
-# cores da tabela_solos (para RasterMap)
-SOLO_COLORS: dict[int, str] = {
-    SOLO_CANAL_FLUVIAL:  "#0000ff",   # azul — canal de drenagem
-    SOLO_LEITO_RIO:      "#6699cc",   # azul claro
-    SOLO_PODZOLICO:      "#aaaaaa",   # cinza claro
-    SOLO_MANGUE:         "#006400",   # verde escuro
-    SOLO_MANGUE_MIGRADO: "#228b22",   # verde floresta
-    SOLO_OUTROS:         "#888888",   # cinza
+# soil colours (for RasterMap)
+SOIL_COLORS: dict[int, str] = {
+    SOIL_RIVER_CHANNEL:  "#0000ff",   # blue — drainage channel
+    SOIL_RIVERBED:      "#6699cc",   # light blue
+    SOIL_PODZOLIC:      "#aaaaaa",   # light grey
+    SOIL_MANGROVE:         "#006400",   # dark green
+    SOIL_MIGRATED_MANGROVE: "#228b22",   # forest green
+    SOIL_OTHER:         "#888888",   # grey
 }

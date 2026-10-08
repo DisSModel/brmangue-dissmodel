@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "brmangue-dissmodel"
-version = "0.4.0"
+version = "0.5.0"
 description = "Implementation of the Bezerra et al. (2013) mangrove migration and coastal flood models on top of DisSModel."
 readme = "README.md"
 authors = [

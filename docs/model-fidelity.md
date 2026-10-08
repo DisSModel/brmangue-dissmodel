@@ -17,15 +17,15 @@ been checked with the model's author.
 
 | Thesis | Published rule | This implementation | Status |
 |---|---|---|---|
-| Eq. 3.1 | Water column of each sea cell rises by `r` (0.011 m) per event; 88 events (2012–2100) | Global sea level `nivel_mar = t · taxa_elevacao`; each source cell's elevation grows by the flux of the step (`taxa_elevacao / n`) | ⚠️ *(to confirm)* |
-| Eq. 3.2 / rule I | `Fluxo = Elevação / nº de vizinhas` with altitude lower than the water column | `fluxo = taxa / (1 + nº vizinhos reais com alt ≤ alt da fonte)`; applied to the source and those neighbours. Only real neighbours count (off-grid / off-mask positions do not) | ⚠️ (lower than the *source cell altitude*, not the column; `+1` for the cell itself) |
-| Rules II–III | Neighbours of water cells become flooded when `fluxo + altitude ≤ coluna d'água` | Neighbour of a flooded/sea cell floods when `alt ≤ nivel_mar` (absolute level) | ⚠️ |
+| Eq. 3.1 | Water column of each sea cell rises by `r` (0.011 m) per event; 88 events (2012–2100) | Global sea level `sea_level = t · sea_level_rise_rate`; each source cell's elevation grows by the flux of the step (`sea_level_rise_rate / n`) | ⚠️ *(to confirm)* |
+| Eq. 3.2 / rule I | `Fluxo = Elevação / nº de vizinhas` with altitude lower than the water column | `flux = sea_level_rise_rate / (1 + number of real neighbours with alt ≤ the source's alt)`; applied to the source and those neighbours. Only real neighbours count (off-grid / off-mask positions do not) | ⚠️ (lower than the *source cell altitude*, not the column; `+1` for the cell itself) |
+| Rules II–III | Neighbours of water cells become flooded when `flux + altitude ≤ coluna d'água` | Neighbour of a flooded/sea cell floods when `alt ≤ sea_level` (absolute level) | ⚠️ |
 | Rule IV | Mangrove cell resists flooding if vertical accretion + altitude ≥ water column | Not applied: mangrove cells flood by the same rule as the others | ⛔ |
-| Eq. 3.3 / rule XII | Vertical accretion `y = 1.693 + 0.939 x` (mm; Alongi 2008) raises mud banks | Implemented (`acrecao_ativa`), **off by default**; also commented out in the TerraME adaptation | ⚠️ opt-in |
-| Rules V–VI | Intertidal zone (AIM) set by tidal amplitude and shifted with sea-level rise | `zona de influência = altura_mare + nivel_mar` (`altura_mare` 6 m) | ✅ |
-| Rules VII, X, XI | Mangrove migrates only inside the AIM, onto cells whose soil is mangrove mud | Land use → `MANGUE_MIGRADO` for dry targets with mangrove soil and `alt ≤ zona de influência`, adjacent to a mangrove cell | ✅ |
-| Rule XII | New mud banks form when the AIM moves (longitudinal accretion) | Soil → `SOLO_MANGUE_MIGRADO` for adjacent targets with `alt ≤ zona de influência` | ✅ |
-| Rules VIII–IX | Barriers: anthropic use, beach, unsuitable soil, altitude above the AIM | Only `VEGETACAO_TERRESTRE` and `SOLO_DESCOBERTO` can be targets; everything else is a barrier | ✅ |
+| Eq. 3.3 / rule XII | Vertical accretion `y = 1.693 + 0.939 x` (mm; Alongi 2008) raises mud banks | Implemented (`accretion_enabled`), **off by default**; also commented out in the TerraME adaptation | ⚠️ opt-in |
+| Rules V–VI | Intertidal zone (AIM) set by tidal amplitude and shifted with sea-level rise | `influence_zone = tide_height + sea_level` (`tide_height` 6 m) | ✅ |
+| Rules VII, X, XI | Mangrove migrates only inside the AIM, onto cells whose soil is mangrove mud | Land use → `MIGRATED_MANGROVE` for dry targets with mangrove soil and `alt ≤ influence_zone`, adjacent to a mangrove cell | ✅ |
+| Rule XII | New mud banks form when the AIM moves (longitudinal accretion) | Soil → `SOIL_MIGRATED_MANGROVE` for adjacent targets with `alt ≤ influence_zone` | ✅ |
+| Rules VIII–IX | Barriers: anthropic use, beach, unsuitable soil, altitude above the AIM | Only `TERRESTRIAL_VEGETATION` and `BARE_SOIL` can be targets; everything else is a barrier | ✅ |
 | Neighbourhood | Moore, up to 8 neighbours | Moore (8); border cells have fewer | ✅ |
 | Update scheme | In-place, cell by cell (TerraME `forEachCell`) | Synchronous, with one start-of-step snapshot shared by both models (TerraME `cell.past` semantics) | ⚠️ differences below |
 

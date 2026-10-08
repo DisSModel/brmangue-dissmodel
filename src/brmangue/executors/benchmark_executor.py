@@ -18,11 +18,13 @@ from dissmodel.io._utils          import write_bytes, write_text
 from dissmodel.executor.config    import settings
 
 from brmangue.models.raster.flood_model    import FloodModel    as RasterFlood
-from brmangue.models.raster.mangrove_model import MangroveModel as RasterMangue
+from brmangue.models.raster.mangrove_model import MangroveModel as RasterMangrove
 from brmangue.models.vector.flood_model    import FloodModel    as VectorFlood
-from brmangue.models.vector.mangrove_model import MangroveModel as VectorMangue
+from brmangue.models.vector.mangrove_model import MangroveModel as VectorMangrove
+from brmangue.common.utils import reject_renamed_parameters
+from brmangue.common.constants import ALTITUDE, LAND_USE, SOIL
 
-CANONICAL_COLS = {"uso", "alt", "solo"}
+CANONICAL_COLS = {LAND_USE, ALTITUDE, SOIL}
 
 
 class BrmangueBenchmarkExecutor(ModelExecutor):
@@ -36,7 +38,8 @@ class BrmangueBenchmarkExecutor(ModelExecutor):
 
     Input contract
     --------------
-    Expects a vector dataset with canonical columns "uso", "alt", "solo"
+    Expects a vector dataset with the canonical columns LAND_USE / ALTITUDE / SOIL
+    (brmangue.common.constants)
     plus integer grid indices "row" and "col" for 1:1 raster alignment.
     The mock raster bypasses geographic projection — it validates model
     math, not spatial accuracy.
@@ -71,9 +74,11 @@ class BrmangueBenchmarkExecutor(ModelExecutor):
         """
         Stateless pre-flight checks — no data loading.
 
-        Column-level checks ("uso"/"alt"/"solo" and "row"/"col") run at
+        Column-level checks (LAND_USE / ALTITUDE / SOIL and "row"/"col") run at
         the start of run() after a single load(), where the cost is paid once.
         """
+        reject_renamed_parameters(record.parameters)
+
         if not record.source.uri:
             raise ValueError(
                 "source.uri is empty — pass 'input_dataset' in the request."
@@ -96,8 +101,8 @@ class BrmangueBenchmarkExecutor(ModelExecutor):
         """
         params        = record.parameters
         n_steps       = params.get("end_time",      10)
-        taxa_elevacao = params.get("taxa_elevacao",  0.011)
-        altura_mare   = params.get("altura_mare",    6.0)
+        sea_level_rise_rate = params.get("sea_level_rise_rate",  0.011)
+        tide_height   = params.get("tide_height",    6.0)
         tolerance     = params.get("tolerance",      0.05)
 
         # data injected by execute_lifecycle — no I/O here
@@ -113,17 +118,17 @@ class BrmangueBenchmarkExecutor(ModelExecutor):
 
         VectorFlood(
             gdf           = gdf_result,
-            taxa_elevacao = taxa_elevacao,
-            attr_uso      = "uso",
-            attr_alt      = "alt",
+            sea_level_rise_rate = sea_level_rise_rate,
+            land_use_attr      = LAND_USE,
+            altitude_attr      = ALTITUDE,
         )
-        VectorMangue(
+        VectorMangrove(
             gdf           = gdf_result,
-            taxa_elevacao = taxa_elevacao,
-            altura_mare   = altura_mare,
-            attr_uso      = "uso",
-            attr_alt      = "alt",
-            attr_solo     = "solo",
+            sea_level_rise_rate = sea_level_rise_rate,
+            tide_height   = tide_height,
+            land_use_attr      = LAND_USE,
+            altitude_attr      = ALTITUDE,
+            soil_attr     = SOIL,
         )
 
         t0     = time.perf_counter()
@@ -138,12 +143,12 @@ class BrmangueBenchmarkExecutor(ModelExecutor):
 
         RasterFlood(
             backend       = backend,
-            taxa_elevacao = taxa_elevacao,
+            sea_level_rise_rate = sea_level_rise_rate,
         )
-        RasterMangue(
+        RasterMangrove(
             backend       = backend,
-            taxa_elevacao = taxa_elevacao,
-            altura_mare   = altura_mare,
+            sea_level_rise_rate = sea_level_rise_rate,
+            tide_height   = tide_height,
         )
 
         t0     = time.perf_counter()
