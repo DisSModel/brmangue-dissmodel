@@ -33,10 +33,11 @@ and what each costs in computing time:
   real polygon geometry. It is written to follow the same rules as the raster
   version, and a benchmark executor checks how closely the two agree.
 
-> ⚠️ **Status:** this is work in progress. The comparison with TerraME so far
-> covers a single reference scenario (see [Testing & Validation](#-testing--validation)),
-> and the model still needs to be validated against more scenarios before it
-> should be relied upon for scientific conclusions.
+> ⚠️ **Status:** this is work in progress. The comparison with TerraME covers two
+> reference scenarios, a baseline and a flooding one (see
+> [Testing & Validation](#-testing--validation)); the model still needs to be
+> validated against more scenarios before it should be relied upon for scientific
+> conclusions.
 
 ---
 
@@ -298,16 +299,22 @@ at step 11). Python vs TerraME:
 | 3  | 100.0% | 100.0% | 98.8% | 0.00063 |
 | 5  | 100.0% | 100.0% | 97.8% | 0.00200 |
 | 10 | 100.0% | 100.0% | 94.9% | 0.00708 |
+| 11 | 99.99% | 100.0% | 94.4% | 0.00801 |
 
-`solo` is exact at every step and `uso` differs in <0.05% of cells (a few
-frontier cells whose flooding flips on the same elevation ties). Because the
+`solo` is exact at every step and `uso` differs in <0.05% of cells (4 cells at
+step 11, frontier cells whose flooding flips on the same elevation ties); the
+maximum `alt` error at step 11 is 1.01 m. The golden files for this scenario are
+in `tests/fixtures/golden_flood/` (only the steps the checkpoints need) and
+`tests/test_flood_validation.py` checks the comparison; to regenerate them, run
+`make golden TAXA=0.5 FINAL=11 OUT=golden_flood` in
+[`brmangue-terrame`](https://github.com/LambdaGeo/brmangue-terrame). Because the
 flooding threshold is discontinuous, the tie noise grows with the number of
 steps; this scenario should be read as "same dynamics, not bit-identical".
 
 #### Limitations and scenario coverage
 
 These results should be read with care, because **the model has been validated
-on a single scenario so far**, and that scenario is a limited test:
+on two scenarios so far**, and the baseline one is a limited test:
 
 - At `taxa_elevacao=0.05` the flood component **never triggers a land-use
   transition**: the lowest cell adjacent to a source sits at 1.0 m and the sea only
@@ -317,11 +324,11 @@ on a single scenario so far**, and that scenario is a limited test:
   leaves the flood component essentially unexercised, and the agreement above
   mostly reflects the mangrove migration component.
 - The original laboratory script (`lab1.lua`) uses `TAXA_ELEVACAO_MAR = 0.5` with
-  `FINAL_TIME = 11`, under which flooding does occur (2,470 cells by step 11).
+  `FINAL_TIME = 11`, under which flooding does occur (2,469 cells by step 11 in
+  TerraME). The "Flood scenario" table above compares that run step by step with
+  TerraME, and
   `tests/test_model_invariants.py::test_flood_model_floods_with_laboratory_parameters`
-  checks that flooding happens under those parameters, so this gap does not
-  reappear unnoticed. A step-by-step comparison against TerraME for such
-  scenarios is still to be done.
+  checks that flooding happens under those parameters.
 - The vector/raster comparison and the runtime measurements have likewise been
   run on a limited set of inputs.
 
